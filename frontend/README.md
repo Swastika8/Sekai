@@ -4,7 +4,7 @@ Sekai is a personal blog with a scroll-driven Japanese garden, a searchable jour
 
 ## Walk through the garden
 
-Scroll from the waterfall past the tea house and through the torii gate. The journal sits inside the same live scene, and the path continues to a koi pond below it. Drag the scene to look around. The markers and scene controls let you stir the falls, change the lighting, shake the maple, and ripple the pond.
+Scroll from the waterfall past the tea house and through the torii gate. The journal sits inside the same live scene, and the path continues to a koi pond below it. Drag the scene to look around. The markers and scene controls let you stir the falls, change the lighting, shake the maple, and ripple the pond. Tap a flowering cherry tree or its pink flower marker to release a shower of petals.
 
 ## Run locally
 

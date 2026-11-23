@@ -6,12 +6,13 @@ export const chapters = [
   { id: 'moon-pond', name: 'Moon pond' },
 ] as const;
 
-export type GardenAction = 'falls' | 'house' | 'maple' | 'gate' | 'pond';
+export type GardenAction = 'falls' | 'house' | 'maple' | 'sakura' | 'gate' | 'pond';
 
 export const gardenActions: Record<GardenAction, string> = {
   falls: 'Stir the waterfall',
   house: 'Toggle the shoji lights',
   maple: 'Shake the maple',
+  sakura: 'Scatter cherry blossoms',
   gate: 'Toggle the path lanterns',
   pond: 'Send a ripple',
 };

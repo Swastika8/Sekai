@@ -1,5 +1,6 @@
 .garden-walk {
   --walk-header: 4.9rem;
+  --blossom: #f6cad8;
   position: relative;
   isolation: isolate;
   color: #f7f2e5;
@@ -21,6 +22,16 @@
 }
 .garden-image { object-fit: cover; }
 .garden-image--maple { opacity: var(--maple, 0); }
+.garden-bough {
+  position: absolute;
+  top: -1.5rem;
+  right: -1.1rem;
+  width: min(38vw, 36rem);
+  max-height: 42svh;
+  object-fit: contain;
+  object-position: top right;
+  pointer-events: none;
+}
 .garden-canvas { opacity: 0; transition: opacity .24s; }
 .garden-canvas[data-scene='webgl'] { opacity: 1; }
 .garden-canvas[data-scene='webgl'] canvas { pointer-events: auto; touch-action: pan-y; }
@@ -52,7 +63,7 @@
 .garden-copy { max-width: min(100%, 43rem); }
 .hero-kicker { color: #e2dcc9; margin-bottom: 1.25rem; }
 .garden-hero h1 { font: 400 clamp(4.65rem, 8.35vw, 8rem)/.88 var(--serif); letter-spacing: -.035em; }
-.garden-hero h1 em { color: #e8dfc7; font-weight: inherit; }
+.garden-hero h1 em { color: var(--blossom); font-weight: inherit; }
 .hero-description { max-width: 25rem; font-size: clamp(1rem, 1.45vw, 1.18rem); line-height: 1.6; margin: 1.55rem 0 1.75rem; color: #eee9dc; }
 .hero-button, .garden-button {
   display: inline-flex;
@@ -71,6 +82,13 @@
 }
 .hero-button:hover, .garden-button:hover { background: #fff9e9; transform: translateY(-2px); }
 .hero-button:active, .garden-button:active { transform: translateY(2px); box-shadow: 0 1px #a8a18b; }
+.hero-button {
+  background: #f1d7df;
+  border-color: #f6dfe6;
+  color: #402d35;
+  box-shadow: 0 3px #b78f9e, 0 9px 24px #0a130e36;
+}
+.hero-button:hover { background: #ffebf1; }
 .garden-actions { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem 1.15rem; }
 .garden-link {
   display: inline-flex;
@@ -128,6 +146,13 @@
 .garden-hotspot[hidden] { display: none; }
 .garden-hotspot > * { pointer-events: none; }
 .garden-hotspot:hover, .garden-hotspot:focus-visible { color: #202e24; background: #f5e5c4; }
+.garden-hotspot[data-object='sakura'] {
+  color: #ffdaea;
+  background: #432d3aeb;
+  border-color: #f7b5cb;
+  box-shadow: 0 0 0 5px #e5a1bb2e, 0 4px 18px #08111080;
+}
+.garden-hotspot[data-object='sakura']:is(:hover, :focus-visible) { color: #5c3045; background: #ffdfeb; }
 .garden-hotspot span {
   visibility: hidden;
   position: absolute;
@@ -186,7 +211,7 @@
   border: 1px solid #384038;
   box-shadow: 0 0 0 3px #1728228c;
 }
-.garden-chapters a[aria-current] i { background: #eac183; box-shadow: 0 0 0 4px #e2bb685e; }
+.garden-chapters a[aria-current] i { background: var(--blossom); box-shadow: 0 0 0 4px #d58daa65; }
 .garden-walk .site-footer { position: relative; z-index: 1; background: #13211cf0; border-color: #fff4d62a; }
 .garden-walk .footer-inner p, .garden-walk .footer-studio { color: #e3deca; }
 
@@ -201,6 +226,7 @@
   .garden-hero { min-height: 96svh; }
   .garden-layout { min-height: 96svh; align-items: end; padding-block: 6rem 5.25rem; }
   .garden-image { object-position: 88% center; }
+  .garden-bough { width: min(73vw, 22rem); max-height: 30svh; top: 1.2rem; right: -1.65rem; }
   .garden-shade {
     background: linear-gradient(180deg, #0c161673, transparent 21%, #0b15151a 34%, #0b1717c9 76%, #0b1717f5),
       linear-gradient(90deg, #0b171738, transparent 85%);

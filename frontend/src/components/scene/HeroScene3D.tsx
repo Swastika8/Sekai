@@ -1,9 +1,9 @@
 import { useEffect, useRef, type RefObject } from 'react';
-import { Droplets, Flame, Leaf, Waves } from 'lucide-react';
+import { Droplets, Flame, Flower2, Leaf, Waves } from 'lucide-react';
 import { mountGarden } from './gardenScene';
 import { gardenActions, type GardenAction, type GardenController, type GardenLights } from './journey';
 
-const icons = { falls: Droplets, house: Flame, maple: Leaf, gate: Flame, pond: Waves };
+const icons = { falls: Droplets, house: Flame, maple: Leaf, sakura: Flower2, gate: Flame, pond: Waves };
 
 interface SceneProps {
   progress: { current: number };
@@ -19,6 +19,7 @@ export default function HeroScene3D({ progress, controls, onReady, onLights }: S
   useEffect(() => {
     if (!container.current) return;
     const garden = mountGarden(container.current, progress, buttons.current, onReady, onLights);
+    if (!garden) onReady(false);
     controls.current = garden;
     return () => {
       controls.current = null;

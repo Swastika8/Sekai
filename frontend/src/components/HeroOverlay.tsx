@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'rea
 import { Mouse } from 'lucide-react';
 import waterfall from '../assets/garden/waterfall.webp';
 import maple from '../assets/garden/maple.webp';
+import cherryBough from '../assets/garden/cherry-bough.webp';
 import { Footer } from './Footer';
 import { Navbar } from './Navbar';
 import { chapters, initialLights, type GardenController } from './scene/journey';
@@ -15,7 +16,7 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
   const progress = useRef(0);
   const controls = useRef<GardenController | null>(null);
   const [motion, setMotion] = useState(() => !window.matchMedia(reducedMotionQuery).matches);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState<boolean | null>(null);
   const [chapter, setChapter] = useState(0);
   const [lights, setLights] = useState(initialLights);
 
@@ -69,13 +70,14 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
     };
   }, [motion]);
 
-  const interactive = motion && ready;
+  const interactive = motion && ready === true;
 
   return (
     <div className="garden-walk" ref={walk} data-chapter={chapters[chapter].id}>
       <div className="garden-backdrop">
         <img className="garden-image" src={waterfall} alt="" fetchPriority="high" />
         {motion && <img className="garden-image garden-image--maple" src={maple} alt="" decoding="async" />}
+        {(!motion || ready === false) && <img className="garden-bough" src={cherryBough} alt="" decoding="async" />}
         {motion && (
           <Suspense fallback={null}>
             <Garden progress={progress} controls={controls} onReady={setReady} onLights={setLights} />
@@ -125,11 +127,12 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
             <div className="chapter-copy">
               <h2 id="gate-title">The lantern path.</h2>
               <div className="garden-actions">
-                {interactive && (
+                {interactive && (<>
                   <button className="garden-button" type="button" onClick={() => controls.current?.activate('gate')}>
                     {lights.gate ? 'Dim the lanterns' : 'Light the path'}
                   </button>
-                )}
+                  <button className="garden-link" type="button" onClick={() => controls.current?.activate('sakura')}>Scatter cherry blossoms</button>
+                </>)}
                 <a className="garden-link" href="#journal">Continue to the journal</a>
               </div>
             </div>

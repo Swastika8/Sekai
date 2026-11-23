@@ -280,6 +280,8 @@ const poolFragment = `
     float moon = exp(-moonDist * moonDist);
     float moonTrail = moon * (1.0 - smoothstep(-17.5, -9.5, p.y)) * smoothstep(-31.0, -17.5, p.y);
     color += moonTrail * vec3(0.19, 0.24, 0.24) * (0.10 + glint * 0.66);
+    vec2 bough = (p - vec2(-12.03, -20.38) + vec2(0.25 * sin(p.y * 6.1 + time), 0.0)) * vec2(0.57, 0.52);
+    color += vec3(0.18, 0.022, 0.073) * exp(-dot(bough, bough)) * (0.12 + 0.88 * glint);
     float pathGlow = exp(-length((p - vec2(-7.87, -8.66)) * vec2(1.04, 0.46)) * 0.81);
     color += pathGlow * lanterns * vec3(0.34, 0.16, 0.055) * (0.2 + glint * 0.55);
 
@@ -324,6 +326,8 @@ export function makeSky(journey: THREE.IUniform<number>) {
       color += vec3(0.23, 0.13, 0.064) * light;
       float bands = noise(vec2(direction.x * 7.0, elevation * 76.0)) * exp(-abs(elevation - 0.112) * 9.0);
       color += vec3(0.105, 0.14, 0.165) * bands * 0.44;
+      float afterglow = exp(-abs(elevation - 0.082) * 10.5 - abs(direction.x - 0.30) * 2.4);
+      color += vec3(0.13, 0.023, 0.062) * afterglow;
 
       float night = smoothstep(2.2, 4.2, journey);
       color = mix(color, color * vec3(0.52, 0.70, 0.83), night * 0.80);

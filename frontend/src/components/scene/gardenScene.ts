@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { gardenPose } from './gardenCamera';
+import { cherrySites, makeSakura } from './gardenSakura';
 import {
   makeDriftingLeaves, makeHouse, makeLanternPath, makeMaple, makePines, makePondLife, makeRidges, makeTerrain,
 } from './gardenModels';
@@ -15,11 +16,16 @@ const landmarks = [
   { id: 'maple', from: 0.17, to: 1.48, anchor: [0.18, 3.81, -0.39], size: [3.82, 3.79, 2.6], center: [0.46, 2.92, -1.27] },
   { id: 'gate', from: 1.68, to: 2.56, anchor: [-6.54, 2.87, -8.19], size: [4.76, 3.63, 1.44], center: [-6.54, 1.60, -8.57] },
   { id: 'pond', from: 3.7, to: 5.1, anchor: [-10.7, -0.86, -19.35], size: [8.96, 0.17, 9.91], center: [-12.0, -0.91, -18.27] },
-].map(({ id, from, to, anchor, size, center }) => ({
-  id: id as GardenAction,
-  from, to,
-  anchor: new THREE.Vector3().fromArray(anchor),
-  bounds: new THREE.Box3().setFromCenterAndSize(new THREE.Vector3().fromArray(center), new THREE.Vector3().fromArray(size)),
+  ...cherrySites.map(({ position: [x, y, z], scale, from, to, markerHeight }, cherryIndex) => ({
+    id: 'sakura', cherryIndex, from, to, anchor: [x + 0.48 * scale, y + markerHeight * scale, z + 0.64 * scale],
+    size: [4.7 * scale, 2.35 * scale, 3.45 * scale], center: [x, y + 3.62 * scale, z],
+  })),
+].map((item) => ({
+  id: item.id as GardenAction,
+  from: item.from, to: item.to,
+  cherryIndex: 'cherryIndex' in item ? item.cherryIndex : undefined,
+  anchor: new THREE.Vector3().fromArray(item.anchor),
+  bounds: new THREE.Box3().setFromCenterAndSize(new THREE.Vector3().fromArray(item.center), new THREE.Vector3().fromArray(item.size)),
 }));
 
 function disposeScene(scene: THREE.Scene) {
@@ -95,9 +101,11 @@ export function mountGarden(
   const lanternPath = makeLanternPath();
   const pondLife = makePondLife();
   const foliage = makeDriftingLeaves();
+  const sakura = makeSakura();
 
   scene.add(makeSky(walk), makeRidges(), makePool(motion, pondInteraction), makeTerrain(), makePines(),
-    teaHouse.house, maple, youngMaple, gateMaple, pondMaple, lanternPath.path, pondLife.pond, foliage.leaves, makeCascade(motion));
+    teaHouse.house, maple, youngMaple, gateMaple, pondMaple, lanternPath.path, pondLife.pond, foliage.leaves,
+    sakura.garden, makeCascade(motion));
   container.append(canvas);
   canvas.style.cursor = 'grab';
 
@@ -159,12 +167,13 @@ export function mountGarden(
     pondInteraction.rippleStart.value = motion.time.value;
   }
 
-  function activate(action: GardenAction) {
+  function activate(action: GardenAction, cherryIndex?: number) {
     if (action === 'falls') {
       waterfallSurge = 1;
       ripple(7.11, 4.81);
     }
     if (action === 'maple') mapleBurst = 1;
+    if (action === 'sakura') sakura.scatter(walk.value, motion.time.value, cherryIndex);
     if (action === 'pond') ripple();
     if (action === 'house' || action === 'gate') {
       lights = { ...lights, [action]: !lights[action] };
@@ -173,14 +182,17 @@ export function mountGarden(
   }
 
   function refreshLandmarks() {
-    for (const landmark of landmarks) {
-      const button = buttons.get(landmark.id);
-      if (!button) continue;
+    for (const [id, button] of buttons) {
+      const landmark = landmarks.find((item) => item.id === id && walk.value >= item.from && walk.value < item.to);
+      if (!landmark) {
+        button.hidden = true;
+        continue;
+      }
       projected.copy(landmark.anchor).project(camera);
       const px = (projected.x + 1) * width * 0.5;
       const py = (1 - projected.y) * height * 0.5;
       const framed = px >= 30 && px <= width - 30 && py >= 89 && py <= height - 32 && projected.z > -1 && projected.z < 1;
-      button.hidden = !framed || walk.value < landmark.from || walk.value > landmark.to;
+      button.hidden = !framed;
       if (!button.hidden) {
         button.style.left = Math.round(px) + 'px';
         button.style.top = Math.round(py) + 'px';
@@ -240,6 +252,7 @@ export function mountGarden(
     youngMaple.rotation.z = Math.sin(time * 0.96 + 1.7) * 0.022;
 
     foliage.drift(time, mapleBurst);
+    sakura.drift(time);
     pondLife.swim(time);
     renderer.render(scene, camera);
     showReady(true);
@@ -280,16 +293,17 @@ export function mountGarden(
     const box = canvas.getBoundingClientRect();
     screen.set(((event.clientX - box.left) / box.width) * 2 - 1, 1 - ((event.clientY - box.top) / box.height) * 2);
     ray.setFromCamera(screen, camera);
-    let selected: GardenAction | undefined;
+    let selected: (typeof landmarks)[number] | undefined;
     let closest = Infinity;
-    for (const { id, bounds, from, to } of landmarks) {
-      if (id === 'pond' || walk.value < from || walk.value > to || !ray.ray.intersectBox(bounds, hit)) continue;
+    for (const landmark of landmarks) {
+      const { id, bounds, from, to } = landmark;
+      if (id === 'pond' || walk.value < from || walk.value >= to || !ray.ray.intersectBox(bounds, hit)) continue;
       const distance = ray.ray.origin.distanceToSquared(hit);
       if (distance >= closest) continue;
       closest = distance;
-      selected = id;
+      selected = landmark;
     }
-    if (selected) activate(selected);
+    if (selected) activate(selected.id, selected.cherryIndex);
     else if (walk.value >= 3.65 && ray.ray.intersectPlane(pondPlane, hit) &&
       hit.x > -16.6 && hit.x < -7.0 && hit.z > -27.0 && hit.z < -12.5) ripple(hit.x, hit.z);
   }

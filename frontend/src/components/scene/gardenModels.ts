@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-type Point = [number, number, number];
+export type Point = [number, number, number];
 type Random = () => number;
 
-function randomFrom(seed: number): Random {
+export function randomFrom(seed: number): Random {
   let state = seed;
   return () => {
     state = (Math.imul(1664525, state) + 1013904223) >>> 0;
@@ -23,7 +23,7 @@ function box(group: THREE.Group, surface: THREE.Material, position: Point, dimen
   group.add(mesh);
 }
 
-function compact(group: THREE.Group) {
+export function compact(group: THREE.Group) {
   group.updateMatrixWorld(true);
   const batches = new Map<THREE.Material, THREE.BufferGeometry[]>();
   const originals = new Set<THREE.BufferGeometry>();
@@ -49,7 +49,7 @@ function compact(group: THREE.Group) {
   return model;
 }
 
-function beam(group: THREE.Group, surface: THREE.Material, from: Point, to: Point, start: number, end = start) {
+export function beam(group: THREE.Group, surface: THREE.Material, from: Point, to: Point, start: number, end = start) {
   const first = new THREE.Vector3(...from);
   const last = new THREE.Vector3(...to);
   const direction = last.clone().sub(first);
@@ -194,7 +194,7 @@ export function makeHouse() {
   return { house, paper, lantern };
 }
 
-function placedInstances(
+export function placedInstances(
   geometry: THREE.BufferGeometry, surface: THREE.Material,
   placements: { position: Point; scale: Point; rotation: Point; color: number }[],
 ) {
