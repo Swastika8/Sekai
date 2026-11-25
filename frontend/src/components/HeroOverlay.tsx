@@ -3,6 +3,8 @@ import { Mouse } from 'lucide-react';
 import waterfall from '../assets/garden/waterfall.webp';
 import maple from '../assets/garden/maple.webp';
 import cherryBough from '../assets/garden/cherry-bough.webp';
+import pondStill from '../assets/garden/koi-pond.webp';
+import pondStillMobile from '../assets/garden/koi-pond-mobile.webp';
 import { Footer } from './Footer';
 import { Navbar } from './Navbar';
 import { chapters, initialLights, type GardenController } from './scene/journey';
@@ -21,6 +23,12 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
   const [lights, setLights] = useState(initialLights);
 
   useEffect(() => {
+    if (window.scrollY !== 0 || !window.location.hash) return;
+    const target = document.getElementById(window.location.hash.slice(1));
+    if (target && walk.current?.contains(target)) target.scrollIntoView({ behavior: 'instant' });
+  }, []);
+
+  useEffect(() => {
     const preference = window.matchMedia(reducedMotionQuery);
     function onPreference(event: MediaQueryListEvent) {
       setMotion(!event.matches);
@@ -34,12 +42,14 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
     if (!element) return;
     const root: HTMLDivElement = element;
     const anchors = chapters.map(({ id }) => root.querySelector<HTMLElement>('#' + id));
+    const mapleImage = root.querySelector<HTMLImageElement>('.garden-image--maple');
+    let points: number[] = [];
+    let currentChapter = -1;
     let frame = 0;
 
     function update() {
       frame = 0;
       const scroll = window.scrollY;
-      const points = anchors.map((anchor) => (anchor?.getBoundingClientRect().top ?? 0) + scroll);
       const next = points.findIndex((point) => point > scroll + 1);
       let position = 0;
       if (next > 0) {
@@ -49,26 +59,38 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
         position = chapters.length - 1 + Math.min(1, Math.max(0, (scroll - points.at(-1)!) / (window.innerHeight * 0.38)));
       }
       progress.current = position;
-      setChapter(Math.min(chapters.length - 1, Math.round(position)));
-      root.style.setProperty('--maple', String(motion ? Math.min(1, position) : 0));
+      const index = Math.min(chapters.length - 1, Math.round(position));
+      if (currentChapter !== index) {
+        currentChapter = index;
+        setChapter(index);
+      }
+      if (mapleImage) {
+        const opacity = String(Math.min(1, position));
+        if (mapleImage.style.opacity !== opacity) mapleImage.style.opacity = opacity;
+      }
     }
 
     function schedule() {
       if (!frame) frame = requestAnimationFrame(update);
     }
 
-    const sizes = new ResizeObserver(schedule);
+    function measure() {
+      const scroll = window.scrollY;
+      points = anchors.map((anchor) => (anchor?.getBoundingClientRect().top ?? 0) + scroll);
+      schedule();
+    }
+    const sizes = new ResizeObserver(measure);
     sizes.observe(root);
-    update();
+    measure();
     window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', schedule);
+    window.addEventListener('resize', measure);
     return () => {
       window.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', schedule);
+      window.removeEventListener('resize', measure);
       cancelAnimationFrame(frame);
       sizes.disconnect();
     };
-  }, [motion]);
+  }, [motion, ready]);
 
   const interactive = motion && ready === true;
 
@@ -76,7 +98,7 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
     <div className="garden-walk" ref={walk} data-chapter={chapters[chapter].id}>
       <div className="garden-backdrop">
         <img className="garden-image" src={waterfall} alt="" fetchPriority="high" />
-        {motion && <img className="garden-image garden-image--maple" src={maple} alt="" decoding="async" />}
+        {motion && ready !== true && <img className="garden-image garden-image--maple" src={maple} alt="" decoding="async" />}
         {(!motion || ready === false) && <img className="garden-bough" src={cherryBough} alt="" decoding="async" />}
         {motion && (
           <Suspense fallback={null}>
@@ -147,6 +169,12 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
         </div>
 
         <section id="moon-pond" className="garden-chapter garden-chapter--pond" aria-labelledby="pond-title">
+          {(!motion || ready !== true) && (
+            <picture className="pond-still">
+              <source media="(max-width: 650px)" srcSet={pondStillMobile} />
+              <img src={pondStill} alt="Patterned koi swim among petals in a moonlit garden pond." loading="lazy" decoding="async" />
+            </picture>
+          )}
           <div className="page-width chapter-layout">
             <div className="chapter-copy">
               <h2 id="pond-title">The moon pond.</h2>

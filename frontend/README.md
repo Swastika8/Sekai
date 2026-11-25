@@ -44,7 +44,7 @@ For a hosted instance, use a persistent disk and an HTTPS reverse proxy. Set `SE
 
 The walk uses one Three.js scene and a camera path tied to the page sections. A flowing waterfall uses curved water surfaces and moving droplets. Scrolling lifts the water into clouds and reveals a growing maple before the camera moves toward the bridge. The journal cards use a flat layout. Reduced-motion settings and browsers without WebGL use still garden artwork.
 
-Built-in ImageGen created the artwork under `src/assets/garden`.
+The koi have individual markings, flexible tails and paired fins. They briefly quicken their tail beats when a ripple reaches them. The pond stills come from the live scene. ImageGen created the waterfall, maple, cherry bough and article cover artwork.
 
 <details>
 <summary>ImageGen prompts</summary>

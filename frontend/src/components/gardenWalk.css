@@ -21,7 +21,7 @@
   pointer-events: none;
 }
 .garden-image { object-fit: cover; }
-.garden-image--maple { opacity: var(--maple, 0); }
+.garden-image--maple { opacity: 0; }
 .garden-bough {
   position: absolute;
   top: -1.5rem;
@@ -116,6 +116,13 @@
   font-size: .86rem;
 }
 .chapter-layout { align-items: end; padding-block: calc(var(--walk-header) + 2.5rem) clamp(4rem, 11vh, 7.5rem); }
+.garden-chapter--pond { position: relative; }
+.pond-still, .pond-still::after { position: absolute; inset: 0; }
+.pond-still img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.pond-still::after {
+  content: '';
+  background: linear-gradient(0deg, #091918b8, transparent 48%);
+}
 .chapter-copy {
   padding: 1.65rem 2rem 1.8rem 0;
   max-width: 39rem;
@@ -245,6 +252,7 @@
 @media (prefers-reduced-motion: reduce) {
   .garden-hero, .garden-layout { min-height: 76svh; }
   .chapter-layout { min-height: 0; padding-block: 3rem; }
+  .pond-still + .chapter-layout { min-height: 82svh; }
   .garden-hint, .garden-chapters { display: none; }
   .garden-walk .nav-links a:hover, .garden-walk .nav-search:hover { transform: none; }
 }

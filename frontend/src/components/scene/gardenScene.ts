@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { gardenPose } from './gardenCamera';
 import { cherrySites, makeSakura } from './gardenSakura';
-import {
-  makeDriftingLeaves, makeHouse, makeLanternPath, makeMaple, makePines, makePondLife, makeRidges, makeTerrain,
-} from './gardenModels';
+import { makeDriftingLeaves, makeMaple, makePines } from './gardenTrees';
+import { makeHouse, makeLanternPath, makeRidges, makeTerrain } from './gardenModels';
+import { makePondLife } from './gardenKoi';
 import { makeCascade, makePool, makeSky, poolHeight, type GardenMotion, type PondLight } from './gardenWater';
 import { initialLights, type GardenAction, type GardenController, type GardenLights } from './journey';
 
@@ -38,7 +38,12 @@ function disposeScene(scene: THREE.Scene) {
     if (object instanceof THREE.InstancedMesh) object.dispose();
   });
   for (const geometry of geometries) geometry.dispose();
-  for (const material of materials) material.dispose();
+  const maps = new Set<THREE.Texture>();
+  for (const material of materials) {
+    if ('map' in material && material.map instanceof THREE.Texture) maps.add(material.map);
+    material.dispose();
+  }
+  for (const map of maps) map.dispose();
 }
 
 export function mountGarden(
@@ -51,7 +56,7 @@ export function mountGarden(
   const canvas = document.createElement('canvas');
   let renderer: THREE.WebGLRenderer;
   try {
-    const context = canvas.getContext('webgl2', { antialias: true, alpha: false, powerPreference: 'low-power' });
+    const context = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'low-power' });
     if (!context) return null;
     renderer = new THREE.WebGLRenderer({ canvas, context });
   } catch {
@@ -59,6 +64,8 @@ export function mountGarden(
   }
 
   const scene = new THREE.Scene();
+  const gl = renderer.getContext();
+  let parallelCompile: KHR_parallel_shader_compile | null = null;
   scene.fog = new THREE.FogExp2(0x374e55, 0.021);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.12;
@@ -99,20 +106,35 @@ export function mountGarden(
   pondMaple.scale.setScalar(0.87);
   const teaHouse = makeHouse();
   const lanternPath = makeLanternPath();
-  const pondLife = makePondLife();
+  const pondLife = makePondLife(pondInteraction);
+  pondLife.pond.visible = false;
+  const cascade = makeCascade(motion);
+  const pool = makePool(motion, pondInteraction);
+  pool.material.transparent = false;
   const foliage = makeDriftingLeaves();
   const sakura = makeSakura();
 
-  scene.add(makeSky(walk), makeRidges(), makePool(motion, pondInteraction), makeTerrain(), makePines(),
-    teaHouse.house, maple, youngMaple, gateMaple, pondMaple, lanternPath.path, pondLife.pond, foliage.leaves,
-    sakura.garden, makeCascade(motion));
+  scene.add(makeSky(walk), makeRidges(), pool, makeTerrain(), makePines(),
+    teaHouse.house, maple, youngMaple, gateMaple, pondMaple, lanternPath.path, foliage.leaves,
+    sakura.garden, cascade, pondLife.pond);
   container.append(canvas);
   canvas.style.cursor = 'grab';
 
   let frame = 0;
+  let shaders: 'new' | 'compiling' | 'ready' = 'new';
   let lastFrame = 0;
+  let nextFrame = 0;
+  let lastInterval = 0;
+  let quality = 1;
+  let sampleMs = 0;
+  let sampleFrames = 0;
+  let healthyWindows = 0;
   let inView = false;
   let contextLost = false;
+  let disposed = false;
+  let reading = false;
+  const paper = container.closest('.garden-walk')?.querySelector('.journal-inner');
+  let paperObserver: IntersectionObserver | undefined;
   let portrait = 0;
   let tablet = 0;
   let waterfallSurge = 0;
@@ -135,7 +157,14 @@ export function mountGarden(
   let height = 1;
   let controlsVisible = false;
 
+  function resizeBuffer() {
+    const maxRatio = Math.min(window.devicePixelRatio || 1, width < 700 ? 1.2 : 1.42, Math.sqrt(2_250_000 / (width * height)));
+    motion.pixelRatio.value = maxRatio * quality;
+    renderer.setDrawingBufferSize(width, height, motion.pixelRatio.value);
+  }
+
   function resize() {
+    const previousHeight = height;
     width = Math.max(1, container.clientWidth);
     height = Math.max(1, container.clientHeight);
     camera.aspect = width / height;
@@ -143,9 +172,14 @@ export function mountGarden(
     tablet = 1 - smoothstep(Math.abs(camera.aspect - 1.32), 0, 0.49);
     camera.fov = 39 + portrait * 9.5 + tablet * 4.5;
     camera.updateProjectionMatrix();
-    motion.pixelRatio.value = Math.min(window.devicePixelRatio, width < 700 ? 1.20 : 1.42);
-    renderer.setPixelRatio(motion.pixelRatio.value);
-    renderer.setSize(width, height, false);
+    resizeBuffer();
+    if (paper && (!paperObserver || previousHeight !== height)) {
+      paperObserver?.disconnect();
+      paperObserver = new IntersectionObserver(([entry]) => {
+        reading = entry.isIntersecting;
+      }, { rootMargin: `-${Math.floor(height * 0.43)}px 0px` });
+      paperObserver.observe(paper);
+    }
   }
 
   function showReady(ready: boolean) {
@@ -185,23 +219,74 @@ export function mountGarden(
     for (const [id, button] of buttons) {
       const landmark = landmarks.find((item) => item.id === id && walk.value >= item.from && walk.value < item.to);
       if (!landmark) {
-        button.hidden = true;
+        if (!button.hidden) button.hidden = true;
         continue;
       }
       projected.copy(landmark.anchor).project(camera);
       const px = (projected.x + 1) * width * 0.5;
       const py = (1 - projected.y) * height * 0.5;
       const framed = px >= 30 && px <= width - 30 && py >= 89 && py <= height - 32 && projected.z > -1 && projected.z < 1;
-      button.hidden = !framed;
-      if (!button.hidden) {
-        button.style.left = Math.round(px) + 'px';
-        button.style.top = Math.round(py) + 'px';
+      if (button.hidden === framed) button.hidden = !framed;
+      if (framed) {
+        const translate = `${Math.round(px)}px ${Math.round(py)}px`;
+        if (button.style.translate !== translate) button.style.translate = translate;
       }
     }
   }
 
+  function sampleFrame(gap: number) {
+    sampleMs += Math.min(gap, 150);
+    sampleFrames++;
+    if (sampleMs < 1_100) return;
+    const average = sampleMs / sampleFrames;
+    const previous = quality;
+    healthyWindows = average < 18.5 ? healthyWindows + 1 : 0;
+    if (average > 23) quality = Math.max(0.62, quality - 0.14);
+    else if (healthyWindows >= 5) {
+      quality = Math.min(1, quality + 0.07);
+      healthyWindows = 0;
+    }
+    sampleMs = 0;
+    sampleFrames = 0;
+    if (quality !== previous) resizeBuffer();
+  }
+
   function draw(now: number) {
-    const elapsed = lastFrame ? Math.min(60, now - lastFrame) : 16;
+    // Keep native scrolling and the poster active while the GPU links the entire walk.
+    // Poll inside this cancellable loop so a hidden tab or lost context can suspend startup.
+    if (shaders === 'new') {
+      parallelCompile = gl.getExtension('KHR_parallel_shader_compile');
+      renderer.compile(scene, camera);
+      for (const texture of pondLife.skins) renderer.initTexture(texture);
+      shaders = 'compiling';
+    }
+    if (shaders === 'compiling') {
+      const status = parallelCompile?.COMPLETION_STATUS_KHR;
+      if (status && renderer.info.programs?.some(({ program }) => !gl.getProgramParameter(program as WebGLProgram, status))) {
+        frame = requestAnimationFrame(draw);
+        return;
+      }
+      shaders = 'ready';
+      walk.value = scroll.current;
+    }
+    const settled = scroll.current === lastScroll && Math.abs(scroll.current - walk.value) < 0.025;
+    const interval = reading && settled && !drag ? 1_000 / 15 : 1_000 / 60;
+    const cadenceChanged = interval !== lastInterval;
+    if (cadenceChanged) {
+      nextFrame = now;
+      lastInterval = interval;
+      sampleMs = 0;
+      sampleFrames = 0;
+      healthyWindows = 0;
+    }
+    if (now + 0.8 < nextFrame) {
+      frame = requestAnimationFrame(draw);
+      return;
+    }
+    nextFrame = (now - nextFrame < interval ? nextFrame : now) + interval;
+    const gap = lastFrame ? now - lastFrame : 0;
+    if (gap && !cadenceChanged && interval === 1_000 / 60) sampleFrame(gap);
+    const elapsed = gap ? Math.min(150, gap) : 1_000 / 60;
     lastFrame = now;
     motion.time.value += elapsed / 1_000;
     const time = motion.time.value;
@@ -225,6 +310,9 @@ export function mountGarden(
     eye.x += center;
     target.x += center;
     target.y -= portrait * arrival * 0.61;
+    const pondView = smoothstep(phase, 3.15, 3.96);
+    target.x += portrait * pondView * 0.53;
+    eye.y += portrait * pondView * 0.46;
     eye.y += Math.sin(time * 0.62) * 0.046;
     camera.position.copy(eye).sub(target).applyAxisAngle(axisY, orbit.x).add(target);
     camera.position.y += orbit.y * 1.57;
@@ -253,7 +341,12 @@ export function mountGarden(
 
     foliage.drift(time, mapleBurst);
     sakura.drift(time);
-    pondLife.swim(time);
+    cascade.visible = phase < 1.75;
+    // Only the moon pond needs a transparent surface over fish and gravel.
+    const nearPond = phase > 1.45;
+    pool.material.transparent = nearPond;
+    pondLife.pond.visible = nearPond;
+    if (nearPond) pondLife.swim(time, dt);
     renderer.render(scene, camera);
     showReady(true);
     refreshLandmarks();
@@ -261,12 +354,13 @@ export function mountGarden(
   }
 
   function syncLoop() {
-    if (inView && !document.hidden && !contextLost) {
+    if (inView && !document.hidden && !contextLost && !disposed) {
       if (!frame) frame = requestAnimationFrame(draw);
     } else {
       cancelAnimationFrame(frame);
       frame = 0;
       lastFrame = 0;
+      lastInterval = 0;
     }
   }
 
@@ -325,6 +419,7 @@ export function mountGarden(
   };
   const onRestore = () => {
     contextLost = false;
+    shaders = 'new';
     resize();
     syncLoop();
   };
@@ -349,8 +444,10 @@ export function mountGarden(
   return {
     activate,
     dispose() {
+      disposed = true;
       cancelAnimationFrame(frame);
       observer.disconnect();
+      paperObserver?.disconnect();
       sizes.disconnect();
       window.removeEventListener('pointermove', onPointer);
       document.documentElement.removeEventListener('pointerleave', resetPointer);
@@ -363,6 +460,7 @@ export function mountGarden(
       canvas.removeEventListener('webglcontextrestored', onRestore);
       disposeScene(scene);
       renderer.dispose();
+      renderer.forceContextLoss();
       canvas.remove();
       showReady(false);
     },

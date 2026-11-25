@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { beam, compact, placedInstances, randomFrom, type Point } from './gardenModels';
+import { placedInstances, randomFrom, type Point } from './gardenModels';
+import { foliageLevels, TreeBranches } from './gardenTrees';
 import { poolHeight } from './gardenWater';
 
 interface CherrySite {
@@ -58,16 +59,37 @@ function makeFlower(petal: THREE.BufferGeometry) {
   return flower;
 }
 
-function growCherry(site: CherrySite, index: number, flower: THREE.BufferGeometry, bud: THREE.BufferGeometry,
+// At a distance, keep the five notched petals in one shallow cup.
+function makeDistantFlower() {
+  const positions = [0, 0, 0.04], colors = new THREE.Color(0xec9a95).toArray(), indices: number[] = [];
+  const outline = [[-0.5, 0.23], [-0.30, 0.94], [0, 0.84], [0.27, 0.99]];
+  for (let petal = 0; petal < 5; petal++) {
+    for (const [offset, radius] of outline) {
+      const angle = Math.PI / 2 + petal * tau / 5 + offset;
+      positions.push(Math.cos(angle) * radius, Math.sin(angle) * radius, radius * 0.28);
+      colors.push(...new THREE.Color(radius < 0.5 ? 0xcb6991 : 0xffe8f0).toArray());
+      const i = positions.length / 3 - 1;
+      indices.push(0, i, i % (outline.length * 5) + 1);
+    }
+  }
+  const flower = new THREE.BufferGeometry();
+  flower.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  flower.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  flower.setIndex(indices);
+  flower.computeVertexNormals();
+  return flower;
+}
+
+function growCherry(site: CherrySite, index: number, flower: THREE.BufferGeometry, distant: THREE.BufferGeometry, bud: THREE.BufferGeometry,
   petals: THREE.Material, bark: THREE.Material, budSkin: THREE.Material) {
   const random = randomFrom(2471 + 439 * index);
-  const wood = new THREE.Group();
+  const wood = new TreeBranches();
   const flowers: Parameters<typeof placedInstances>[2] = [];
   const buds: typeof flowers = [];
   const tips: THREE.Vector3[] = [];
   const trunk: Point[] = [[0, -0.18, 0], [0.13, 0.68, 0.02], [-0.20, 1.48, 0.13],
     [0.13, 2.29, -0.07], [-0.02, 3.01, -0.18], [-0.30, 3.70, 0.09]];
-  for (let i = 1; i < trunk.length; i++) beam(wood, bark, trunk[i - 1], trunk[i], 0.275 - i * 0.038, 0.251 - i * 0.039);
+  for (let i = 1; i < trunk.length; i++) wood.add(trunk[i - 1], trunk[i], 0.275 - i * 0.038, 0.251 - i * 0.039);
 
   // Each arm forks into finer upward-facing sprays. Flowers grow in little bunches along those twigs.
   const arms = [[1, 3.05, 2.36, 2.80], [2, 0.38, 2.34, 3.03], [2, -2.07, 2.00, 3.41],
@@ -77,8 +99,8 @@ function growCherry(site: CherrySite, index: number, flower: THREE.BufferGeometr
     const dx = Math.cos(angle), dz = Math.sin(angle);
     const end: Point = [dx * reach, height, dz * reach * 0.82];
     const elbow: Point = [dx * reach * 0.54, height - 0.72, dz * reach * 0.39];
-    beam(wood, bark, trunk[joint], elbow, 0.119, 0.075);
-    beam(wood, bark, elbow, end, 0.080, 0.024);
+    wood.add(trunk[joint], elbow, 0.119, 0.075);
+    wood.add(elbow, end, 0.080, 0.024);
     const twigCount = site.scale < 0.7 ? 3 : 5;
     for (let twig = 0; twig < twigCount; twig++) {
       const along = 0.12 + 0.76 * twig / (twigCount - 1);
@@ -86,13 +108,13 @@ function growCherry(site: CherrySite, index: number, flower: THREE.BufferGeometr
       const fork: Point = [lerp(elbow[0], end[0], along), lerp(elbow[1], end[1], along), lerp(elbow[2], end[2], along)];
       const spread = side * (0.33 + random() * 0.49);
       const tip: Point = [fork[0] + dx * 0.59 - dz * spread, fork[1] + 0.34 + random() * 0.47, fork[2] + dz * 0.44 + dx * spread];
-      beam(wood, bark, fork, tip, 0.039, 0.010);
+      wood.add(fork, tip, 0.039, 0.010);
       for (let spur = 0; spur < 3; spur++) {
         const t = 0.38 + spur * 0.29;
         const stem: Point = [lerp(fork[0], tip[0], t), lerp(fork[1], tip[1], t), lerp(fork[2], tip[2], t)];
         const spray = (spur % 2 ? 1 : -1) * (0.13 + random() * 0.20);
         const center: Point = [stem[0] + dx * 0.13 - dz * spray, stem[1] + 0.08 + random() * 0.12, stem[2] + dz * 0.13 + dx * spray];
-        beam(wood, bark, stem, center, 0.016, 0.007);
+        wood.add(stem, center, 0.016, 0.007);
         tips.push(new THREE.Vector3(...center));
         const count = 3 + Math.floor(random() * 4);
         for (let i = 0; i < count; i++) {
@@ -109,8 +131,8 @@ function growCherry(site: CherrySite, index: number, flower: THREE.BufferGeometr
       }
     }
   }
-  const tree = compact(wood);
-  tree.add(placedInstances(flower, petals, flowers), placedInstances(bud, budSkin, buds));
+  const tree = new THREE.Group();
+  tree.add(wood.mesh(bark), foliageLevels(flower, distant, petals, flowers, 11 * site.scale), placedInstances(bud, budSkin, buds));
   tree.position.set(...site.position);
   tree.scale.setScalar(site.scale);
   tree.rotation.y = site.yaw;
@@ -122,14 +144,14 @@ function growCherry(site: CherrySite, index: number, flower: THREE.BufferGeometr
 export function makeSakura() {
   const garden = new THREE.Group();
   const petal = makePetal();
-  const flower = makeFlower(petal);
+  const flower = makeFlower(petal), distant = makeDistantFlower();
   const bud = new THREE.IcosahedronGeometry(1, 0);
   const petals = new THREE.MeshLambertMaterial({
     color: 0xffffff, vertexColors: true, side: THREE.DoubleSide, emissive: 0x391623, emissiveIntensity: 0.22,
   });
   const bark = new THREE.MeshStandardMaterial({ color: 0x583a42, roughness: 0.9 });
   const budSkin = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  const trees = cherrySites.map((site, index) => growCherry(site, index, flower, bud, petals, bark, budSkin));
+  const trees = cherrySites.map((site, index) => growCherry(site, index, flower, distant, bud, petals, bark, budSkin));
   for (const { tree } of trees) garden.add(tree);
 
   const random = randomFrom(8107);

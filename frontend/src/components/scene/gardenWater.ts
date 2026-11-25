@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 export const poolHeight = -0.91;
+export const rippleSpeed = 1.6;
 
 export interface GardenMotion {
   time: THREE.IUniform<number>;
@@ -269,39 +270,51 @@ const poolFragment = `
     float shore = smoothstep(3.0, 21.0, distance(cameraPosition.xz, p));
     vec3 color = mix(vec3(0.017, 0.063, 0.066), vec3(0.092, 0.183, 0.185), shore);
     color += glint * vec3(0.018, 0.051, 0.052);
-    float fromFall = length((p - vec2(7.11, 4.81)) * vec2(0.76, 1.06));
-    float waves = pow(0.5 + 0.5 * sin(fromFall * 22.0 - time * 8.0), 6.0);
-    float churn = exp(-fromFall * 0.51) * (0.22 + waves * 0.61) * (1.0 - smoothstep(0.18, 0.92, progress));
-    color += churn * vec3(0.17, 0.33, 0.32);
-    float reflection = (p.x - 3.0 + sin(p.y * 7.4 + time * 1.7) * 0.19) / (1.1 + 0.1 * max(0.0, p.y));
-    float warm = exp(-reflection * reflection) * smoothstep(0.2, 3.0, p.y) * (1.0 - smoothstep(7.0, 17.0, p.y));
-    color += warm * (0.18 + 0.67 * glint) * vec3(0.67, 0.29, 0.085);
-    float moonDist = (p.x + 12.25 + 0.34 * sin(p.y * 6.1 + time)) * 0.76;
-    float moon = exp(-moonDist * moonDist);
-    float moonTrail = moon * (1.0 - smoothstep(-17.5, -9.5, p.y)) * smoothstep(-31.0, -17.5, p.y);
-    color += moonTrail * vec3(0.19, 0.24, 0.24) * (0.10 + glint * 0.66);
-    vec2 bough = (p - vec2(-12.03, -20.38) + vec2(0.25 * sin(p.y * 6.1 + time), 0.0)) * vec2(0.57, 0.52);
-    color += vec3(0.18, 0.022, 0.073) * exp(-dot(bough, bough)) * (0.12 + 0.88 * glint);
-    float pathGlow = exp(-length((p - vec2(-7.87, -8.66)) * vec2(1.04, 0.46)) * 0.81);
-    color += pathGlow * lanterns * vec3(0.34, 0.16, 0.055) * (0.2 + glint * 0.55);
-
     float age = time - rippleStart;
-    float radius = length(p - rippleCenter);
-    float ripple = pow(0.5 + 0.5 * sin(radius * 17.0 - age * 13.0), 7.0);
-    float waveFront = (radius - age * 0.88) * 1.85;
-    float ring = exp(-waveFront * waveFront);
-    color += vec3(0.23, 0.46, 0.43) * ripple * ring * exp(-age * 0.58);
-    gl_FragColor = vec4(color, 1.0);
+    float ring = 0.0;
+    if (age < 9.0) {
+      float radius = length(p - rippleCenter);
+      float offset = radius - age * ${rippleSpeed};
+      float waveFront = offset * 1.85;
+      ring = pow(0.5 + 0.5 * cos(offset * 17.0), 7.0) * exp(-waveFront * waveFront - age * 0.58);
+      color += vec3(0.23, 0.46, 0.43) * ring;
+    }
+    float opacity = 1.0;
+    if (p.y > -5.0) {
+      float fromFall = length((p - vec2(7.11, 4.81)) * vec2(0.76, 1.06));
+      float waves = pow(0.5 + 0.5 * sin(fromFall * 22.0 - time * 8.0), 6.0);
+      float churn = exp(-fromFall * 0.51) * (0.22 + waves * 0.61) * (1.0 - smoothstep(0.18, 0.92, progress));
+      color += churn * vec3(0.17, 0.33, 0.32);
+      float reflection = (p.x - 3.0 + sin(p.y * 7.4 + time * 1.7) * 0.19) / (1.1 + 0.1 * max(0.0, p.y));
+      float warm = exp(-reflection * reflection) * smoothstep(0.2, 3.0, p.y) * (1.0 - smoothstep(7.0, 17.0, p.y));
+      color += warm * (0.18 + 0.67 * glint) * vec3(0.67, 0.29, 0.085);
+    } else {
+      float pathGlow = exp(-length((p - vec2(-7.87, -8.66)) * vec2(1.04, 0.46)) * 0.81);
+      color += pathGlow * lanterns * vec3(0.34, 0.16, 0.055) * (0.2 + glint * 0.55);
+      if (p.y < -9.5) {
+        float moonDist = (p.x + 12.25 + 0.34 * sin(p.y * 6.1 + time)) * 0.76;
+        float moonTrail = exp(-moonDist * moonDist) * (1.0 - smoothstep(-17.5, -9.5, p.y)) * smoothstep(-31.0, -17.5, p.y);
+        color += moonTrail * vec3(0.19, 0.24, 0.24) * (0.10 + glint * 0.66);
+        vec2 bough = (p - vec2(-12.03, -20.38) + vec2(0.25 * sin(p.y * 6.1 + time), 0.0)) * vec2(0.57, 0.52);
+        color += vec3(0.18, 0.022, 0.073) * exp(-dot(bough, bough)) * (0.12 + 0.88 * glint);
+        float pond = 1.0 - smoothstep(0.88, 1.20, length((p - vec2(-11.65, -18.80)) / vec2(4.65, 5.45)));
+        float clear = pond * (1.0 - smoothstep(14.0, 20.0, distance(cameraPosition.xz, p)));
+        float grazing = 1.0 - clamp(normalize(cameraPosition - vWorld).y, 0.0, 1.0);
+        opacity = mix(1.0, 0.10 + 0.28 * grazing * grazing + 0.17 * glint + 0.39 * ring, clear);
+      }
+    }
+    gl_FragColor = vec4(color, opacity);
     #include <colorspace_fragment>
   }
 `;
 
 export function makePool(motion: GardenMotion, interaction: PondLight) {
   const pool = new THREE.Mesh(new THREE.PlaneGeometry(170, 140, 45, 40), new THREE.ShaderMaterial({
-    uniforms: { ...motion, ...interaction }, vertexShader: poolVertex, fragmentShader: poolFragment,
+    uniforms: { ...motion, ...interaction }, vertexShader: poolVertex, fragmentShader: poolFragment, transparent: true,
   }));
   pool.rotation.x = -Math.PI / 2;
   pool.position.set(0, poolHeight, -8);
+  pool.renderOrder = 1;
   return pool;
 }
 
@@ -343,7 +356,8 @@ export function makeSky(journey: THREE.IUniform<number>) {
   const sky = new THREE.Mesh(new THREE.SphereGeometry(120, 36, 20), new THREE.ShaderMaterial({
     uniforms: { journey }, side: THREE.BackSide, vertexShader, fragmentShader, depthWrite: false,
   }));
-  sky.renderOrder = -10;
+  // Draw the sky only where the opaque garden has left the depth buffer clear.
+  sky.renderOrder = 10;
   return sky;
 }
 

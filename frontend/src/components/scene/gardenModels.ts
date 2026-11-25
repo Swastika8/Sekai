@@ -32,7 +32,10 @@ export function compact(group: THREE.Group) {
     if (!(node instanceof THREE.Mesh) || Array.isArray(node.material)) return;
     const source = node.geometry as THREE.BufferGeometry;
     originals.add(source);
-    const geometry = source.index ? source.toNonIndexed() : source.clone();
+    const geometry = source.clone();
+    if (!geometry.index) {
+      geometry.setIndex(Array.from({ length: geometry.getAttribute('position').count }, (_, i) => i));
+    }
     geometry.applyMatrix4(node.matrixWorld);
     const batch = batches.get(node.material) ?? [];
     batch.push(geometry);
@@ -281,92 +284,6 @@ export function makeTerrain() {
   return garden;
 }
 
-export function makePines() {
-  const random = randomFrom(877);
-  const forest = new THREE.Group();
-  const sites = [
-    [-10.2, -10.4, 0, 3.0], [-8.9, -7.3, -0.2, 2.7], [-3.8, -9.1, 0, 3.9],
-    [-3.1, -8.7, -0.2, 4.6], [-1.2, -7, -0.15, 3.2], [0.2, -8.4, -0.2, 4.7],
-    [1.95, -9.6, -0.2, 3.8], [3.7, -8.4, -0.15, 3.18], [5.4, -9.6, 0, 5.6],
-    [7.0, -5.9, -0.15, 4.68], [9.0, -5.5, 0, 6.1], [10.1, -4.5, 0, 4.4],
-    [-2.55, -4.55, 0.28, 2.13], [-1.1, -4.35, 0.42, 2.65], [8.4, 0.4, 5.65, 2.28],
-    [-12.2, -9.5, 0.1, 4.1], [-11.1, -12.15, 0.05, 3.7], [-3.9, -11.5, 0.05, 3.4],
-    [-16.4, -16.0, -0.18, 4.5], [-15.7, -19.2, -0.12, 3.3], [-13.9, -23.3, -0.15, 4.2],
-    [-12.2, -25.1, -0.2, 5.5], [-9.6, -24.4, -0.1, 4.15], [-7.4, -22.2, -0.2, 4.2],
-    [-4.2, -16.4, 0.2, 4.85], [-5.3, -17.9, 0.0, 4.1], [-1.5, -17.2, 0.01, 3.6],
-  ];
-  const bark: Parameters<typeof placedInstances>[2] = [];
-  const branches: Parameters<typeof placedInstances>[2] = [];
-  for (const [x, z, y, h] of sites) {
-    bark.push({ position: [x, y + h * 0.32, z], rotation: [0, 0, 0.027], scale: [h * 0.036, h * 0.73, h * 0.036], color: 0x4b4035 });
-    for (let level = 0; level < 4; level += 1) {
-      const width = h * (0.245 - level * 0.044);
-      branches.push({
-        position: [x + (random() - 0.5) * 0.13, y + h * (0.37 + level * 0.158), z],
-        scale: [width, h * (0.44 - level * 0.032), width * (0.80 + random() * 0.27)],
-        rotation: [(random() - 0.5) * 0.18, random() * Math.PI, (random() - 0.5) * 0.15],
-        color: [0x364e43, 0x3e5a49, 0x4a6350, 0x526b56][level],
-      });
-    }
-  }
-  forest.add(placedInstances(new THREE.CylinderGeometry(1, 1.2, 1, 5), material(0xffffff), bark));
-  forest.add(placedInstances(new THREE.ConeGeometry(1, 1, 8), material(0xffffff, { flatShading: true }), branches));
-  return forest;
-}
-
-export function makeMaple(seed: number) {
-  const random = randomFrom(seed);
-  const maple = new THREE.Group();
-  const bark = material(0x47352b, { flatShading: true });
-  const twigs = new THREE.Group();
-  const crown: Parameters<typeof placedInstances>[2] = [];
-  const colors = [0x843c33, 0xb64e37, 0xc06b42, 0xbc7548, 0xa44837, 0xd39052, 0xd2744d];
-  const trunk: Point[] = [[0, 0, 0], [0.1, 0.74, 0.012], [0.31, 1.51, 0.015], [0.20, 2.3, -0.065], [0.42, 2.97, 0.08], [0.77, 3.62, 0.09]];
-
-  for (let i = 0; i < trunk.length - 1; i += 1) {
-    beam(twigs, bark, trunk[i], trunk[i + 1], 0.245 - i * 0.039, 0.221 - i * 0.041);
-  }
-  for (let root = 0; root < 6; root += 1) {
-    const angle = root * 1.047 + 0.2;
-    beam(twigs, bark, [0.02, 0.21, 0], [Math.cos(angle) * 0.62, -0.05, Math.sin(angle) * 0.58], 0.15, 0.026);
-  }
-
-  const limbs: [number, Point, Point][] = [
-    [2, [-0.4, 1.92, 0.04], [-1.61, 2.57, 0.22]],
-    [2, [0.89, 1.86, 0.45], [1.94, 2.36, 0.68]],
-    [3, [-0.59, 2.66, -0.39], [-1.46, 3.15, -0.66]],
-    [3, [0.93, 2.73, -0.41], [1.96, 3.19, -0.6]],
-    [4, [-0.06, 3.44, 0.37], [-0.61, 3.77, 0.8]],
-    [4, [0.89, 3.49, -0.24], [1.22, 3.96, -0.29]],
-    [5, [0.91, 3.87, 0.24], [0.86, 4.26, 0.48]],
-  ];
-
-  for (const [joint, elbow, tip] of limbs) {
-    beam(twigs, bark, trunk[joint], elbow, 0.105, 0.069);
-    beam(twigs, bark, elbow, tip, 0.073, 0.026);
-    for (let i = 0; i < 3; i += 1) {
-      const fork: Point = [tip[0] + (random() - 0.5) * 0.86, tip[1] + 0.22 + random() * 0.46, tip[2] + (random() - 0.5) * 0.76];
-      beam(twigs, bark, elbow, fork, 0.043, 0.009);
-    }
-
-    for (let i = 0; i < 30; i += 1) {
-      const angle = random() * Math.PI * 2;
-      const distance = Math.sqrt(random()) * 0.92;
-      const spread = i < 6 ? 0.47 : 0.14 + random() * 0.20;
-      crown.push({
-        position: [tip[0] + Math.cos(angle) * distance, tip[1] + 0.23 + (random() - 0.45) * 0.61, tip[2] + Math.sin(angle) * distance * 0.66],
-        scale: [spread * (1.15 + random()), spread * (0.27 + random() * 0.37), spread * (0.63 + random() * 0.68)],
-        rotation: [random() - 0.5, angle, (random() - 0.5) * 0.44],
-        color: colors[Math.floor(random() * colors.length)],
-      });
-    }
-  }
-
-  maple.add(compact(twigs));
-  maple.add(placedInstances(new THREE.IcosahedronGeometry(1, 1), material(0xffffff, { flatShading: true }), crown));
-  return maple;
-}
-
 export function makeRidges() {
   const mountains = new THREE.Group();
   const random = randomFrom(562);
@@ -453,7 +370,7 @@ export function makeLanternPath() {
   for (const [x, y, z, size] of [
     [-4.18, -0.28, 0.75, 0.83], [-6.83, -0.26, -4.55, 0.82], [-3.96, -0.18, -5.15, 0.77],
     [-8.4, 0.03, -7.5, 1.05], [-4.58, 0.02, -7.65, 0.98], [-8.06, -0.20, -10.8, 0.86],
-    [-5.23, -0.24, -10.65, 0.83], [-11.14, -0.34, -16.7, 1.06], [-7.14, -0.29, -17.1, 1.15],
+    [-5.23, -0.24, -10.65, 0.83], [-8.91, -0.31, -14.78, 0.85], [-7.14, -0.29, -17.1, 1.03],
     [-15.42, -0.26, -19.9, 1.11], [-8.45, -0.26, -22.5, 1],
   ]) pathLantern(structure, stone, glow, x, y, z, size);
 
@@ -486,72 +403,3 @@ export function makeLanternPath() {
   terrain.add(compact(structure));
   return { path: terrain, glow };
 }
-
-export function makePondLife() {
-  const pond = new THREE.Group();
-  const cream = material(0xc6bd9b, { roughness: 0.57 });
-  const orange = material(0xc46547, { roughness: 0.57 });
-  const fish: { body: THREE.Group; tail: THREE.Mesh; phase: number }[] = [];
-  const bodyShape = new THREE.SphereGeometry(1, 11, 8);
-  const tailShape = new THREE.ConeGeometry(0.14, 0.37, 5);
-  for (let i = 0; i < 5; i += 1) {
-    const body = new THREE.Group();
-    const skin = new THREE.Mesh(bodyShape, i % 3 === 0 ? orange : cream);
-    skin.scale.set(0.15, 0.085, 0.43);
-    body.add(skin);
-    const patch = new THREE.Mesh(bodyShape, i % 3 === 0 ? cream : orange);
-    patch.scale.set(0.10, 0.038, 0.18);
-    patch.position.set(0.025, 0.052, 0.02);
-    body.add(patch);
-    const tail = new THREE.Mesh(tailShape, orange);
-    tail.rotation.x = -Math.PI / 2;
-    tail.scale.set(0.9, 0.97, 0.23);
-    tail.position.z = -0.49;
-    body.add(tail);
-    pond.add(body);
-    fish.push({ body, tail, phase: i * 1.26 });
-  }
-  function swim(time: number) {
-    for (const { body, tail, phase } of fish) {
-      const angle = time * (0.23 + phase * 0.013) + phase;
-      const rx = 1.28 + 0.15 * phase;
-      const rz = 1.6 + 0.28 * phase;
-      body.position.set(-11.65 + Math.cos(angle) * rx, -0.87 + Math.sin(angle * 2.6) * 0.019, -17.9 + Math.sin(angle) * rz);
-      body.rotation.y = Math.atan2(-Math.sin(angle) * rx, Math.cos(angle) * rz);
-      tail.rotation.y = Math.sin(time * 7.4 + phase) * 0.47;
-    }
-  }
-  return { pond, swim };
-}
-
-export function makeDriftingLeaves() {
-  const shape = new THREE.Shape();
-  shape.moveTo(0, -0.48);
-  for (const [x, y] of [[-0.18, -0.18], [-0.42, -0.16], [-0.29, 0.02], [-0.56, 0.27], [-0.18, 0.21],
-    [0, 0.66], [0.17, 0.25], [0.56, 0.29], [0.34, 0.02], [0.43, -0.17], [0.13, -0.28]]) shape.lineTo(x, y);
-  shape.closePath();
-  const centers = [[0.3, 3.9, -1.44], [-10.82, 4.0, -8.2], [-7.63, 3.6, -19.75]];
-  const random = randomFrom(588);
-  const seeds = Array.from({ length: 63 }, (_, index) => ({ center: centers[index % centers.length], offset: random(), phase: random() * 6.28, size: 0.075 + random() * 0.11 }));
-  const leaves = new THREE.InstancedMesh(new THREE.ShapeGeometry(shape), material(0xffffff, { side: THREE.DoubleSide }), seeds.length);
-  const colors = [0xe7a262, 0xbd6140, 0xb95542, 0xd88345];
-  for (let i = 0; i < seeds.length; i += 1) leaves.setColorAt(i, new THREE.Color(colors[i % colors.length]));
-  leaves.frustumCulled = false;
-  leaves.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  const transform = new THREE.Object3D();
-  function drift(time: number, burst: number) {
-    for (const [i, { center, offset, phase, size }] of seeds.entries()) {
-      const fall = (offset + time * 0.16) % 1;
-      const gust = i % centers.length === 0 ? burst : 0;
-      transform.position.set(center[0] + Math.sin(time * 0.66 + phase) * (1.62 + gust * 2.5), center[1] - fall * 4.9,
-        center[2] + Math.cos(phase + fall * 2.5) * 1.85 + gust * fall);
-      transform.rotation.set(phase + time * 2.8, time * 1.45 + phase, phase + fall * 4.6);
-      transform.scale.setScalar(size * Math.min(1, (1 - fall) * 7, fall * 8));
-      transform.updateMatrix();
-      leaves.setMatrixAt(i, transform.matrix);
-    }
-    leaves.instanceMatrix.needsUpdate = true;
-  }
-  return { leaves, drift };
-}
-
