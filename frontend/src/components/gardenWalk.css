@@ -133,6 +133,21 @@
   letter-spacing: -.035em;
   margin-bottom: 1.05rem;
 }
+.tea-sign {
+  position: relative;
+  display: block;
+  width: min(13rem, 80%);
+  margin-top: 1.25rem;
+  border-radius: .2rem;
+  box-shadow: 0 .2rem 0 #71513b, 0 .45rem .8rem #09150f65;
+}
+.tea-sign[hidden] { display: none; }
+.tea-sign img { display: block; width: 100%; height: auto; border-radius: inherit; }
+.tea-sign[data-projected] { position: fixed; width: auto; margin: 0; box-shadow: none; touch-action: pan-y; }
+.tea-sign[data-projected] img { display: none; }
+.tea-sign[data-projected='away'] { visibility: hidden; }
+.tea-sign:focus-visible { outline: 3px solid #fff0cf; outline-offset: 4px; }
+.tea-sign:hover { box-shadow: 0 0 0 2px #f8d9a6b3; }
 .garden-hotspot {
   position: absolute;
   top: 0;

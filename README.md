@@ -17,7 +17,7 @@ Open the URL Vite prints. The development server includes the journal API. React
 
 ## Write and publish
 
-Open **Writing studio** in the footer or visit `/studio`. On the first local visit, set an owner password. Write in Markdown, preview the article, then save a draft or publish it. A published post gets its own URL. The studio also lets you set the Medium profile link shown in the footer.
+Open **Writing studio** in the footer or visit `/studio`. On the first local visit, set an owner password. Write in Markdown, preview the article, then save a draft or publish it. A published post gets its own URL. The wooden sign beside the tea-house steps and the footer both lead to Swastika’s Medium profile. You can change that link in the studio.
 
 A fresh database includes *Just Meet Them Once* and *Deconstructing 2,136 Jōyō Kanji Through Visual Etymology*. Subsequent edits and new posts live in the database. Back up SQLite to preserve that work across deployments.
 
@@ -38,7 +38,7 @@ Connect this repository to a Cloudflare **Pages** project and use these build se
 
 For Direct Upload, run `npm --prefix frontend run build:pages` from the repository root and upload the contents of `frontend/dist-pages`.
 
-The public site serves the 3D garden, search, and articles as static files. To publish from the local studio, publish the article locally, open `/api/posts/<slug>` on that same local server, and save its JSON as `backend/content/<slug>.json`. Commit the file and push to `main`. You can also edit the two published files directly. Keep drafts in the local studio. The optional Pages build variable `SEKAI_MEDIUM_URL` sets the footer link to your public Medium profile.
+The public site serves the 3D garden, search, and articles as static files. To publish from the local studio, publish the article locally, open `/api/posts/<slug>` on that same local server, and save its JSON as `backend/content/<slug>.json`. Commit the file and push to `main`. You can also edit the two published files directly. Keep drafts in the local studio. Pages reads the Medium address from `backend/public-profile.json`. Set `SEKAI_MEDIUM_URL` to override it for a particular build.
 
 ### Node server with writing studio
 

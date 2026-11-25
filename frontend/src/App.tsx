@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
-import { useResource, type PostSummary, type Topic } from './blog';
+import { useMediumProfile, useResource, type PostSummary, type Topic } from './blog';
 import { FeaturedPosts } from './components/FeaturedPosts';
 import { Footer } from './components/Footer';
 import { GardenWalk } from './components/HeroOverlay';
@@ -9,7 +9,7 @@ import { SearchModal } from './components/SearchModal';
 const ArticleView = lazy(() => import('./components/ArticleView'));
 const Studio = import.meta.env.MODE === 'pages' ? null : lazy(() => import('./components/Studio'));
 
-function Home() {
+function Home({ medium }: { medium: string }) {
   const { data, error, retry } = useResource<PostSummary[]>('/posts');
   const [category, setCategory] = useState<Topic | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -17,7 +17,7 @@ function Home() {
   return (
     <>
       <a className="skip-link" href="#journal">Skip to the journal</a>
-      <GardenWalk onSearch={() => setSearchOpen(true)}>
+      <GardenWalk medium={medium} onSearch={() => setSearchOpen(true)}>
         <FeaturedPosts posts={data} category={category} onCategory={setCategory} error={error} onRetry={retry} />
       </GardenWalk>
       {searchOpen && <SearchModal posts={data} onClose={() => setSearchOpen(false)} />}
@@ -26,11 +26,12 @@ function Home() {
 }
 
 export default function App() {
+  const medium = useMediumProfile();
   const path = window.location.pathname.replace(/\/$/, '') || '/';
   const post = /^\/posts\/([^/]+)$/.exec(path);
   const studio = path === '/studio' && Studio !== null;
 
-  if (path === '/') return <Home />;
+  if (path === '/') return <Home medium={medium} />;
 
   return (
     <>
@@ -46,7 +47,7 @@ export default function App() {
           </main>
         )}
       </Suspense>
-      <Footer />
+      <Footer medium={medium} />
     </>
   );
 }

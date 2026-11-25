@@ -16,7 +16,7 @@ const material = (color: number, extra: THREE.MeshStandardMaterialParameters = {
   new THREE.MeshStandardMaterial({ color, roughness: 0.87, ...extra });
 
 const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-function box(group: THREE.Group, surface: THREE.Material, position: Point, dimensions: Point) {
+export function box(group: THREE.Group, surface: THREE.Material, position: Point, dimensions: Point) {
   const mesh = new THREE.Mesh(boxGeometry, surface);
   mesh.position.set(...position);
   mesh.scale.set(...dimensions);

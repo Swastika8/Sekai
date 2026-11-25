@@ -4,6 +4,7 @@ import { cherrySites, makeSakura } from './gardenSakura';
 import { makeDriftingLeaves, makeMaple, makePines } from './gardenTrees';
 import { makeHouse, makeLanternPath, makeRidges, makeTerrain } from './gardenModels';
 import { makePondLife } from './gardenKoi';
+import { makeMediumSign } from './mediumSign';
 import { makeCascade, makePool, makeSky, poolHeight, type GardenMotion, type PondLight } from './gardenWater';
 import { initialLights, type GardenAction, type GardenController, type GardenLights } from './journey';
 
@@ -50,6 +51,7 @@ export function mountGarden(
   container: HTMLElement,
   scroll: { current: number },
   buttons: Map<GardenAction, HTMLButtonElement>,
+  mediumLink: HTMLAnchorElement,
   onReady: (ready: boolean) => void,
   onLights: (lights: GardenLights) => void,
 ): GardenController | null {
@@ -105,6 +107,7 @@ export function mountGarden(
   pondMaple.rotation.y = 0.79;
   pondMaple.scale.setScalar(0.87);
   const teaHouse = makeHouse();
+  const mediumSign = makeMediumSign(mediumLink);
   const lanternPath = makeLanternPath();
   const pondLife = makePondLife(pondInteraction);
   pondLife.pond.visible = false;
@@ -115,7 +118,7 @@ export function mountGarden(
   const sakura = makeSakura();
 
   scene.add(makeSky(walk), makeRidges(), pool, makeTerrain(), makePines(),
-    teaHouse.house, maple, youngMaple, gateMaple, pondMaple, lanternPath.path, foliage.leaves,
+    teaHouse.house, mediumSign.model, maple, youngMaple, gateMaple, pondMaple, lanternPath.path, foliage.leaves,
     sakura.garden, cascade, pondLife.pond);
   container.append(canvas);
   canvas.style.cursor = 'grab';
@@ -191,6 +194,8 @@ export function mountGarden(
     }
     else {
       delete container.dataset.scene;
+      delete mediumLink.dataset.projected;
+      mediumLink.style.removeProperty('inset');
       for (const button of buttons.values()) button.hidden = true;
     }
     onReady(ready);
@@ -299,6 +304,8 @@ export function mountGarden(
     walk.value = damp(walk.value, scroll.current, 12, dt);
 
     const phase = walk.value;
+    mediumSign.model.visible = phase < 1.58 && !mediumLink.hidden;
+    if (mediumSign.model.visible) mediumSign.panel.rotation.x = 0.025 * Math.sin(time * 1.18);
     waterfallSurge = damp(waterfallSurge, 0, 0.56, dt);
     mapleBurst = damp(mapleBurst, 0, 0.77, dt);
     const water = smoothstep(phase, 0.06, 0.74);
@@ -350,6 +357,7 @@ export function mountGarden(
     renderer.render(scene, camera);
     showReady(true);
     refreshLandmarks();
+    mediumSign.positionLink(camera, width, height);
     frame = requestAnimationFrame(draw);
   }
 

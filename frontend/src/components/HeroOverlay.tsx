@@ -5,6 +5,7 @@ import maple from '../assets/garden/maple.webp';
 import cherryBough from '../assets/garden/cherry-bough.webp';
 import pondStill from '../assets/garden/koi-pond.webp';
 import pondStillMobile from '../assets/garden/koi-pond-mobile.webp';
+import mediumBoard from '../assets/garden/medium-board.webp';
 import { Footer } from './Footer';
 import { Navbar } from './Navbar';
 import { chapters, initialLights, type GardenController } from './scene/journey';
@@ -13,10 +14,11 @@ import './gardenWalk.css';
 const Garden = lazy(() => import('./scene/HeroScene3D'));
 const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 
-export function GardenWalk({ onSearch, children }: { onSearch: () => void; children: ReactNode }) {
+export function GardenWalk({ medium, onSearch, children }: { medium: string; onSearch: () => void; children: ReactNode }) {
   const walk = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
   const controls = useRef<GardenController | null>(null);
+  const mediumLink = useRef<HTMLAnchorElement>(null);
   const [motion, setMotion] = useState(() => !window.matchMedia(reducedMotionQuery).matches);
   const [ready, setReady] = useState<boolean | null>(null);
   const [chapter, setChapter] = useState(0);
@@ -102,7 +104,7 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
         {(!motion || ready === false) && <img className="garden-bough" src={cherryBough} alt="" decoding="async" />}
         {motion && (
           <Suspense fallback={null}>
-            <Garden progress={progress} controls={controls} onReady={setReady} onLights={setLights} />
+            <Garden progress={progress} controlsRef={controls} mediumLink={mediumLink} onReady={setReady} onLights={setLights} />
           </Suspense>
         )}
         <div className="garden-shade" aria-hidden="true" />
@@ -140,6 +142,10 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
                   <button className="garden-link" type="button" onClick={() => controls.current?.activate('maple')}>Shake the maple</button>
                 </div>
               )}
+              <a className="tea-sign" ref={mediumLink} href={medium || undefined} hidden={!medium}
+                target="_blank" rel="me noopener noreferrer" aria-label="Read Swastika’s writing on Medium (opens in a new tab)">
+                <img src={mediumBoard} alt="Swastika’s writing on Medium" width="816" height="336" />
+              </a>
             </div>
           </div>
         </section>
@@ -194,7 +200,7 @@ export function GardenWalk({ onSearch, children }: { onSearch: () => void; child
           </a>
         ))}
       </nav>
-      <Footer />
+      <Footer medium={medium} />
     </div>
   );
 }

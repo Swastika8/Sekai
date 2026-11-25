@@ -2,6 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { readPublishedPosts } from './published-content.mjs';
+import publicProfile from './public-profile.json' with { type: 'json' };
 export { categories } from './published-content.mjs';
 
 const postColumns = `id, slug, title, excerpt, category, tags,
@@ -102,7 +103,7 @@ export function openStore(directory) {
 
   return {
     getProfile() {
-      return db.prepare('SELECT medium FROM profile WHERE id = 1').get() ?? { medium: '' };
+      return db.prepare('SELECT medium FROM profile WHERE id = 1').get() ?? publicProfile;
     },
     setMedium(url) {
       db.prepare('INSERT INTO profile VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET medium = excluded.medium').run(url);

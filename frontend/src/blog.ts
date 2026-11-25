@@ -74,3 +74,14 @@ export function useResource<T>(path: string) {
   return { data, error, retry };
 }
 
+export function useMediumProfile() {
+  const { data } = useResource<{ medium: string }>('/profile');
+  const [saved, setSaved] = useState<string>();
+  useEffect(() => {
+    const refresh = (event: Event) => setSaved((event as CustomEvent<string>).detail);
+    window.addEventListener('profile-saved', refresh);
+    return () => window.removeEventListener('profile-saved', refresh);
+  }, []);
+  return saved ?? data?.medium ?? '';
+}
+

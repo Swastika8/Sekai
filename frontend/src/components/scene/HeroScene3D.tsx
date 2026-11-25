@@ -7,25 +7,26 @@ const icons = { falls: Droplets, house: Flame, maple: Leaf, sakura: Flower2, gat
 
 interface SceneProps {
   progress: { current: number };
-  controls: RefObject<GardenController | null>;
+  controlsRef: RefObject<GardenController | null>;
+  mediumLink: RefObject<HTMLAnchorElement | null>;
   onReady: (ready: boolean) => void;
   onLights: (lights: GardenLights) => void;
 }
 
-export default function HeroScene3D({ progress, controls, onReady, onLights }: SceneProps) {
+export default function HeroScene3D({ progress, controlsRef, mediumLink, onReady, onLights }: SceneProps) {
   const container = useRef<HTMLDivElement>(null);
   const buttons = useRef(new Map<GardenAction, HTMLButtonElement>());
 
   useEffect(() => {
-    if (!container.current) return;
-    const garden = mountGarden(container.current, progress, buttons.current, onReady, onLights);
+    if (!container.current || !mediumLink.current) return;
+    const garden = mountGarden(container.current, progress, buttons.current, mediumLink.current, onReady, onLights);
     if (!garden) onReady(false);
-    controls.current = garden;
+    controlsRef.current = garden;
     return () => {
-      controls.current = null;
+      controlsRef.current = null;
       garden?.dispose();
     };
-  }, [progress, controls, onReady, onLights]);
+  }, [progress, controlsRef, mediumLink, onReady, onLights]);
 
   return (
     <div className="garden-live">
@@ -37,7 +38,7 @@ export default function HeroScene3D({ progress, controls, onReady, onLights }: S
             <button key={action} type="button" className="garden-hotspot" aria-label={gardenActions[action]}
               data-object={action} hidden
               ref={(node) => { if (node) buttons.current.set(action, node); else buttons.current.delete(action); }}
-              onClick={() => controls.current?.activate(action)}>
+              onClick={() => controlsRef.current?.activate(action)}>
               <Icon size={19} strokeWidth={1.6} aria-hidden="true" />
               <span aria-hidden="true">{gardenActions[action]}</span>
             </button>

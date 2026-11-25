@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readPublishedPosts } from './published-content.mjs';
 import { articleHtml } from './article-html.mjs';
+import publicProfile from './public-profile.json' with { type: 'json' };
 
 const output = new URL('../frontend/dist-pages/', import.meta.url);
 const posts = readPublishedPosts();
@@ -14,7 +15,7 @@ for (const post of posts) {
   writeFileSync(new URL('index.html', page), articleHtml(index, post));
 }
 writeFileSync(new URL('journal-data/posts.json', output), JSON.stringify(posts.map(({ content, ...summary }) => summary)));
-const medium = process.env.SEKAI_MEDIUM_URL?.trim() || '';
+const medium = process.env.SEKAI_MEDIUM_URL?.trim() ?? publicProfile.medium;
 const profile = URL.parse(medium);
 if (medium && (!profile || profile.protocol !== 'https:' || profile.username || profile.password)) {
   throw new Error('SEKAI_MEDIUM_URL must be a public HTTPS profile URL');
