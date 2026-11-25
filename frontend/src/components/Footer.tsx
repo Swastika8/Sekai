@@ -17,7 +17,7 @@ export function Footer() {
         <Wordmark />
         <p>A personal journal by Swastika.</p>
         {medium && <a href={medium} rel="me">Medium</a>}
-        <a className="footer-studio" href="/studio">Writing studio</a>
+        {import.meta.env.MODE !== 'pages' && <a className="footer-studio" href="/studio">Writing studio</a>}
       </div>
     </footer>
   );

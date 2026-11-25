@@ -7,7 +7,7 @@ import { Navbar } from './components/Navbar';
 import { SearchModal } from './components/SearchModal';
 
 const ArticleView = lazy(() => import('./components/ArticleView'));
-const Studio = lazy(() => import('./components/Studio'));
+const Studio = import.meta.env.MODE === 'pages' ? null : lazy(() => import('./components/Studio'));
 
 function Home() {
   const { data, error, retry } = useResource<PostSummary[]>('/posts');
@@ -28,6 +28,7 @@ function Home() {
 export default function App() {
   const path = window.location.pathname.replace(/\/$/, '') || '/';
   const post = /^\/posts\/([^/]+)$/.exec(path);
+  const studio = path === '/studio' && Studio !== null;
 
   if (path === '/') return <Home />;
 
@@ -36,9 +37,9 @@ export default function App() {
       <a className="skip-link" href="#main-content">Skip to content</a>
       <Navbar />
       <Suspense fallback={<main id="main-content" className="page-width page-message" role="status">Loading Sekai…</main>}>
-        {path === '/studio' && <Studio />}
+        {studio && <Studio />}
         {post && <ArticleView slug={post[1]} />}
-        {path !== '/studio' && !post && (
+        {!studio && !post && (
           <main id="main-content" className="page-width page-message">
             <h1>Page not found</h1>
             <a className="button" href="/">Back to Sekai</a>

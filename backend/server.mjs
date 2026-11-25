@@ -1,14 +1,16 @@
-import { createReadStream, readFileSync, statSync } from 'node:fs';
+import { constants, createReadStream, statSync } from 'node:fs';
+import { access, readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { extname, isAbsolute, relative, resolve } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 import { createBlogApi } from './api.mjs';
+import { articleHtml } from './article-html.mjs';
 
 const dist = fileURLToPath(new URL('../frontend/dist/', import.meta.url));
-let index;
+const indexPath = resolve(dist, 'index.html');
 try {
-  index = readFileSync(resolve(dist, 'index.html'), 'utf8');
+  await access(indexPath, constants.R_OK);
 } catch (error) {
   if (error.code !== 'ENOENT') throw error;
   console.error('Build the journal first with npm --prefix frontend run build.');
@@ -21,10 +23,6 @@ const mimeTypes = {
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.webp': 'image/webp', '.png': 'image/png',
   '.jpg': 'image/jpeg', '.avif': 'image/avif', '.txt': 'text/plain; charset=utf-8',
 };
-
-function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-}
 
 async function servePage(request, response) {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -61,10 +59,8 @@ async function servePage(request, response) {
   const post = articlePath && api.findPublished(articlePath[1]);
   const studio = path === '/studio' || path === '/studio/';
   const status = path === '/' || studio || post ? 200 : 404;
-  const html = post ? index
-    .replace(/<title>[^<]+<\/title>/, () => `<title>${escapeHtml(post.title)} · Sekai</title>`)
-    .replace(/<meta name="description" content="[^"]*"\s*\/?>/, () => `<meta name="description" content="${escapeHtml(post.excerpt)}" />`)
-    : index;
+  const index = await readFile(indexPath, 'utf8');
+  const html = post ? articleHtml(index, post) : index;
 
   response.writeHead(status, {
     'Content-Type': 'text/html; charset=utf-8',

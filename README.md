@@ -23,6 +23,25 @@ A fresh database includes *Just Meet Them Once* and *Deconstructing 2,136 Jōyō
 
 ## Test and serve
 
+### Cloudflare Pages
+
+Connect this repository to a Cloudflare **Pages** project and use these build settings. Pages assigns the project a `pages.dev` address on deployment. [Cloudflare’s Git setup guide](https://developers.cloudflare.com/pages/get-started/git-integration/)
+
+| Pages setting | Value |
+| --- | --- |
+| Production branch | `main` |
+| Framework preset | None |
+| Root directory | `frontend` |
+| Build command | `npm run build:pages` |
+| Build output directory | `dist-pages` |
+| Environment variable | `NODE_VERSION=24` |
+
+For Direct Upload, run `npm --prefix frontend run build:pages` from the repository root and upload the contents of `frontend/dist-pages`.
+
+The public site serves the 3D garden, search, and articles as static files. To publish from the local studio, publish the article locally, open `/api/posts/<slug>` on that same local server, and save its JSON as `backend/content/<slug>.json`. Commit the file and push to `main`. You can also edit the two published files directly. Keep drafts in the local studio. The optional Pages build variable `SEKAI_MEDIUM_URL` sets the footer link to your public Medium profile.
+
+### Node server with writing studio
+
 ```sh
 node --test backend/api.test.mjs
 npm --prefix frontend run build

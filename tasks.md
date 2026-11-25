@@ -10,7 +10,7 @@ Persistent source of truth for tracking the implementation of Sekai's 3D Cinemat
 - [x] Configure Tailwind CSS, fonts (`Cinzel Decorative`, `Outfit`, `Playfair Display`, `Noto Serif JP`), and custom glassmorphism styles in `index.css`
 
 ## Mock Data & State
-- [x] Include the Jōyō Kanji starter article, four journal categories, and Shikishi quotes in `frontend/src/mockData.ts`
+- [x] Include the Jōyō Kanji starter article in `backend/content/`, with the journal categories and Shikishi quotes in `frontend/src/mockData.ts`
 
 ## 3D Scene Architecture (`HeroScene3D.tsx`)
 - [x] Strict z-index stacking context: `fixed inset-0 -z-10` canvas with negative depth layer

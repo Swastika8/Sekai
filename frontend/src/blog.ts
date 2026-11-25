@@ -35,7 +35,8 @@ export class RequestError extends Error {
 }
 
 export async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch('/api' + path, options);
+  const url = import.meta.env.MODE === 'pages' ? '/journal-data' + path + '.json' : '/api' + path;
+  const response = await fetch(url, options);
   const body = await response.json().catch(() => null);
   if (!response.ok || body === null) {
     throw new RequestError(response.status, body?.error ?? 'Could not reach the journal. Please try again.');

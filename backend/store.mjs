@@ -1,10 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import marriageEssay from './content/just-meet-them-once.json' with { type: 'json' };
-import { BLOG_POSTS, CATEGORIES } from '../frontend/src/mockData.ts';
-
-export const categories = CATEGORIES.map(({ name }) => name);
+import { readPublishedPosts } from './published-content.mjs';
+export { categories } from './published-content.mjs';
 
 const postColumns = `id, slug, title, excerpt, category, tags,
   published_at AS publishedAt, read_time AS readTime, japanese_title AS japaneseTitle`;
@@ -61,10 +59,9 @@ function createJournal(db) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?, 1)
   `);
 
-  for (const post of [...BLOG_POSTS, marriageEssay]) {
-    const timestamp = post.publishedAt ?? new Date(`${post.date} 00:00:00 UTC`).toISOString();
+  for (const post of readPublishedPosts()) {
     insert.run(post.id, post.slug, post.title, post.excerpt, post.content.trim(), post.category,
-      JSON.stringify(post.tags), post.japaneseTitle ?? null, post.readTime, timestamp, timestamp);
+      JSON.stringify(post.tags), post.japaneseTitle, post.readTime, post.publishedAt, post.publishedAt);
   }
 }
 
