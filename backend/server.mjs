@@ -74,9 +74,12 @@ async function servePage(request, response) {
   response.end(request.method === 'HEAD' ? undefined : html);
 }
 
-const server = createServer((request, response) => {
+const server = createServer({ headersTimeout: 15_000, requestTimeout: 60_000, maxHeaderSize: 16_384 }, (request, response) => {
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.setHeader('X-Frame-Options', 'DENY');
+  response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.SEKAI_PUBLIC_ORIGIN) response.setHeader('Strict-Transport-Security', 'max-age=31536000');
   response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   void api.handle(request, response, () => servePage(request, response)).catch((error) => {
     if (response.destroyed) return;

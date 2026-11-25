@@ -32,7 +32,9 @@ function send(response, status, body) {
 function requireSameOrigin(request, publicOrigin) {
   const origin = URL.parse(request.headers.origin ?? '');
   const fetchSite = request.headers['sec-fetch-site'];
-  const matchesOrigin = publicOrigin ? origin?.origin === publicOrigin : origin?.host === request.headers.host;
+  const protocol = request.socket.encrypted ? 'https' : 'http';
+  const matchesOrigin = publicOrigin ? origin?.origin === publicOrigin
+    : isLocalRequest(request) && origin?.origin === protocol + '://' + request.headers.host;
   if (!origin || !['http:', 'https:'].includes(origin.protocol) || !matchesOrigin || (fetchSite && fetchSite !== 'same-origin')) {
     throw new ApiError(403, 'Open the studio on the same address as the journal.');
   }
@@ -44,15 +46,16 @@ function isLocalRequest(request) {
   return localHosts.has(host?.hostname) && localAddresses.has(request.socket.remoteAddress);
 }
 
-async function readJson(request) {
+async function readJson(request, limit = maxBodyBytes) {
   if (request.headers['content-type']?.split(';')[0].trim() !== 'application/json') {
     throw new ApiError(415, 'Send a JSON request.');
   }
   const chunks = [];
+  if (Number(request.headers['content-length']) > limit) throw new ApiError(413, 'Request body is too large.');
   let bytes = 0;
   for await (const chunk of request.iterator({ destroyOnReturn: false })) {
     bytes += chunk.length;
-    if (bytes > maxBodyBytes) {
+    if (bytes > limit) {
       request.resume();
       throw new ApiError(413, 'This post is too large to save.');
     }
@@ -106,6 +109,7 @@ function sessionCookie(response, token, maxAge, secure) {
 
 export function createBlogApi() {
   const publicOrigin = process.env.SEKAI_PUBLIC_ORIGIN ? new URL(process.env.SEKAI_PUBLIC_ORIGIN).origin : '';
+  if (publicOrigin && !publicOrigin.startsWith('https://')) throw new Error('Use an HTTPS address for SEKAI_PUBLIC_ORIGIN.');
   const configuredPassword = process.env.SEKAI_STUDIO_PASSWORD;
   if (configuredPassword && !validPassword(configuredPassword)) throw new Error('SEKAI_STUDIO_PASSWORD must be 12–256 characters.');
 
@@ -117,6 +121,13 @@ export function createBlogApi() {
   }
 
   const loginAttempts = new Map();
+  let passwordJobs = 0;
+  async function derivePassword(password, salt) {
+    if (passwordJobs >= 2) throw new ApiError(429, 'Studio sign-in is busy. Try again shortly.');
+    passwordJobs++;
+    try { return await hashPassword(password, salt, 64); }
+    finally { passwordJobs--; }
+  }
   function logAttempt(request, response) {
     const now = Date.now();
     const address = request.socket.remoteAddress ?? 'unknown';
@@ -124,8 +135,8 @@ export function createBlogApi() {
       if (entry.until <= now) loginAttempts.delete(key);
     }
     const attempt = loginAttempts.get(address) ?? { count: 0, until: now + 10 * 60_000 };
-    if (attempt.count >= 12 || loginAttempts.size >= 512) {
-      response.setHeader('Retry-After', Math.ceil((attempt.until - now) / 1_000));
+    if (attempt.count >= 12 || (!loginAttempts.has(address) && loginAttempts.size >= 512)) {
+      response.setHeader('Retry-After', Math.max(1, Math.ceil((attempt.until - now) / 1_000)));
       throw new ApiError(429, 'Too many sign-in attempts. Try again in a few minutes.');
     }
     attempt.count += 1;
@@ -146,6 +157,7 @@ export function createBlogApi() {
 
     try {
       const method = request.method;
+      if (method === 'GET' && path === '/api/profile') return send(response, 200, store.getProfile());
       if (method === 'GET' && path === '/api/posts') return send(response, 200, store.listPublished());
       const postPath = /^\/api\/posts\/([^/]+)$/.exec(path);
       if (method === 'GET' && postPath) {
@@ -167,10 +179,10 @@ export function createBlogApi() {
       const origin = method === 'GET' ? null : requireSameOrigin(request, publicOrigin);
       if (method === 'POST' && path === '/api/studio/setup') {
         if (!setupAvailable) throw new ApiError(403, 'Studio setup is unavailable at this address.');
-        const { password } = await readJson(request);
+        const { password } = await readJson(request, 4096);
         if (!validPassword(password)) throw new ApiError(400, 'Use a password with 12–256 characters.');
         const salt = randomBytes(16).toString('hex');
-        const hash = await hashPassword(password, salt, 64);
+        const hash = await derivePassword(password, salt);
         if (!store.createOwner(salt, hash.toString('hex'))) throw new ApiError(409, 'The studio is already set up. Sign in instead.');
         startSession(response, origin);
         return send(response, 201, { signedIn: true });
@@ -178,9 +190,9 @@ export function createBlogApi() {
 
       if (method === 'POST' && path === '/api/studio/login') {
         if (!owner) throw new ApiError(403, 'Set the studio password before signing in.');
-        const { password } = await readJson(request);
         const address = logAttempt(request, response);
-        const hash = validPassword(password) ? await hashPassword(password, owner.salt, 64) : Buffer.alloc(64);
+        const { password } = await readJson(request, 4096);
+        const hash = validPassword(password) ? await derivePassword(password, owner.salt) : Buffer.alloc(64);
         if (!timingSafeEqual(hash, Buffer.from(owner.hash, 'hex'))) throw new ApiError(401, 'The password is incorrect.');
         loginAttempts.delete(address);
         startSession(response, origin);
@@ -194,6 +206,16 @@ export function createBlogApi() {
       }
 
       if (!signedIn) throw new ApiError(401, 'Sign in to access the studio.');
+      if (method === 'PUT' && path === '/api/studio/profile') {
+        const { medium } = await readJson(request, 8192);
+        const url = typeof medium === 'string' && URL.parse(medium.trim());
+        if (medium !== '' && (!url || url.protocol !== 'https:' || url.username || url.password)) {
+          throw new ApiError(400, 'Enter an HTTPS profile URL or clear the field.');
+        }
+        if (!store.hasSession(tokenHash)) throw new ApiError(401, 'Sign in again to save your profile.');
+        store.setMedium(url ? url.href : '');
+        return send(response, 200, store.getProfile());
+      }
       if (method === 'GET' && path === '/api/studio/posts') return send(response, 200, store.listForStudio());
       const editorPath = /^\/api\/studio\/posts\/([a-z\d-]{6,64})$/.exec(path);
       if (method === 'PUT' && editorPath) {

@@ -1,6 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import marriageEssay from './content/just-meet-them-once.json' with { type: 'json' };
 import { BLOG_POSTS, CATEGORIES } from '../frontend/src/mockData.ts';
 
 export const categories = CATEGORIES.map(({ name }) => name);
@@ -60,8 +61,8 @@ function createJournal(db) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?, 1)
   `);
 
-  for (const post of BLOG_POSTS) {
-    const timestamp = new Date(`${post.date} 00:00:00 UTC`).toISOString();
+  for (const post of [...BLOG_POSTS, marriageEssay]) {
+    const timestamp = post.publishedAt ?? new Date(`${post.date} 00:00:00 UTC`).toISOString();
     insert.run(post.id, post.slug, post.title, post.excerpt, post.content.trim(), post.category,
       JSON.stringify(post.tags), post.japaneseTitle ?? null, post.readTime, timestamp, timestamp);
   }
@@ -70,15 +71,16 @@ function createJournal(db) {
 function migrate(db) {
   transaction(db, () => {
     const version = db.prepare('PRAGMA user_version').get().user_version;
-    if (version >= 2) return;
+    if (version >= 3) return;
 
     if (version === 0) {
       createJournal(db);
-    } else {
+    } else if (version === 1) {
       // Studio edits advance the revision, so personalized copies survive the upgrade.
       db.exec("DELETE FROM posts WHERE id IN ('post-1', 'post-2') AND revision = 1");
     }
-    db.exec('PRAGMA user_version = 2');
+    db.exec('CREATE TABLE profile (id INTEGER PRIMARY KEY CHECK(id = 1), medium TEXT NOT NULL) STRICT');
+    db.exec('PRAGMA user_version = 3');
   });
 }
 
@@ -102,6 +104,12 @@ export function openStore(directory) {
   migrate(db);
 
   return {
+    getProfile() {
+      return db.prepare('SELECT medium FROM profile WHERE id = 1').get() ?? { medium: '' };
+    },
+    setMedium(url) {
+      db.prepare('INSERT INTO profile VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET medium = excluded.medium').run(url);
+    },
     listPublished() {
       return db.prepare(`SELECT ${postColumns} FROM posts WHERE status = 'published'
         ORDER BY published_at DESC, id`).all().map(unpack);

@@ -15,7 +15,7 @@ npm --prefix frontend ci
 npm --prefix frontend run dev
 ```
 
-Open the local address Vite prints. Select **Writing studio** in the footer or visit `/studio`. The first visit from localhost lets you set your studio password. A new journal starts with one article, “Deconstructing 2,136 Jōyō Kanji Through Visual Etymology.”
+Open the local address Vite prints. Select **Writing studio** in the footer or visit `/studio`. The first visit from localhost lets you set your studio password. A new journal starts with “Deconstructing 2,136 Jōyō Kanji Through Visual Etymology” and “Just Meet Them Once.”
 
 In the studio, choose **New post**, enter a title and topic, and write in Markdown. Use **Preview** to check the formatting. **Save draft** keeps a post private. **Publish** makes the post available in the journal and gives it a shareable address. You can edit or unpublish articles from the studio.
 

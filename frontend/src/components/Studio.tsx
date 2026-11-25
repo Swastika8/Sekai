@@ -67,6 +67,33 @@ function StudioAccess({ hasOwner, setupAvailable, onSignIn }: {
   );
 }
 
+function MediumProfile() {
+  const { data, error, retry } = useResource<{ medium: string }>('/profile');
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const medium = String(new FormData(event.currentTarget).get('medium') ?? '').trim();
+    setBusy(true);
+    try {
+      const saved = await request<{ medium: string }>('/studio/profile', writeRequest('PUT', { medium }));
+      setNotice(medium ? 'Medium link saved.' : 'Medium link removed.');
+      window.dispatchEvent(new CustomEvent('profile-saved', { detail: saved.medium }));
+    } catch (failure) {
+      setNotice(errorMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+  if (error) return <button type="button" onClick={retry}>Reload Medium profile</button>;
+  if (!data) return null;
+  return <form className="studio-form" onSubmit={save}>
+    <label>Medium profile<input type="url" name="medium" defaultValue={data.medium} placeholder="https://medium.com/@yourname" /></label>
+    <button className="button" disabled={busy}>Save link</button>
+    <span role="status">{notice}</span>
+  </form>;
+}
+
 function blankPost(): StudioPost {
   const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
   return {
@@ -175,6 +202,7 @@ function StudioEditor({ initialPosts, onSignOut }: { initialPosts: StudioPost[];
               </li>
             ))}
           </ul>
+          <MediumProfile />
         </aside>
 
         <form className="studio-editor" onSubmit={(event) => { event.preventDefault(); void save(post.status); }}>
