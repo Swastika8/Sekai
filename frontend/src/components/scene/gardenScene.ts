@@ -304,8 +304,7 @@ export function mountGarden(
     walk.value = damp(walk.value, scroll.current, 12, dt);
 
     const phase = walk.value;
-    mediumSign.model.visible = phase < 1.58 && !mediumLink.hidden;
-    if (mediumSign.model.visible) mediumSign.panel.rotation.x = 0.025 * Math.sin(time * 1.18);
+    mediumSign.model.visible = phase >= 1.55 && phase < 2.85 && !mediumLink.hidden;
     waterfallSurge = damp(waterfallSurge, 0, 0.56, dt);
     mapleBurst = damp(mapleBurst, 0, 0.77, dt);
     const water = smoothstep(phase, 0.06, 0.74);

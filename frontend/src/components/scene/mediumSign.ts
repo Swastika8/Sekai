@@ -1,39 +1,38 @@
 import * as THREE from 'three';
 import boardImage from '../../assets/garden/medium-board.webp';
-import { beam, box, compact } from './gardenModels';
+import { box, compact } from './gardenModels';
 
 export function makeMediumSign(link: HTMLAnchorElement) {
-  const model = new THREE.Group();
-  model.position.set(1.64, 0.44, 1.60);
-  model.rotation.y = -0.43;
-
   const cedar = new THREE.MeshStandardMaterial({ color: 0x71513b, roughness: 0.93 });
-  const bracket = new THREE.Group();
-  const armY = 1.96;
-  box(bracket, cedar, [-0.84, armY / 2 - 0.025, -0.09], [0.13, armY + 0.21, 0.14]);
-  box(bracket, cedar, [0, armY, -0.04], [1.92, 0.11, 0.17]);
-  beam(bracket, cedar, [-0.83, armY - 0.43, -0.09], [-0.38, armY, -0.08], 0.045);
-  model.add(compact(bracket));
-
-  const width = 1.54;
+  const width = 0.88;
   const height = width * 336 / 816;
-  const boardY = -0.52;
-  const hanger = new THREE.Group();
-  const cord = new THREE.MeshStandardMaterial({ color: 0xba9260, roughness: 1 });
-  for (const x of [-0.54, 0.54]) {
-    beam(hanger, cord, [x, 0.04, 0], [x, boardY + height / 2 - 0.01, 0], 0.018);
-  }
-  box(hanger, cedar, [0, boardY, 0], [width + 0.018, height + 0.018, 0.092]);
-  const panel = compact(hanger);
-  panel.position.set(0.045, armY - 0.05, 0.03);
-  model.add(panel);
+  const stake = new THREE.Group();
+  box(stake, cedar, [0, 0.21, -0.045], [0.08, 0.58, 0.085]);
+  const board = new THREE.Group();
+  board.position.set(0, 0.52, 0);
+  board.rotation.x = -0.22;
+  box(board, cedar, [0, 0, -0.03], [width + 0.012, height + 0.012, 0.058]);
+  stake.add(board);
+  const model = compact(stake);
+
+  // A rolled lip and a hollow interior give the small stoneware pot its silhouette.
+  const potProfile = [[0.10, 0], [0.14, 0.025], [0.14, 0.055], [0.21, 0.12], [0.26, 0.24],
+    [0.25, 0.32], [0.17, 0.40], [0.16, 0.43], [0.19, 0.44], [0.19, 0.47],
+    [0.145, 0.47], [0.14, 0.425], [0.21, 0.30], [0.17, 0.16], [0, 0.12]];
+  const pot = new THREE.Mesh(new THREE.LatheGeometry(potProfile.map(([r, y]) => new THREE.Vector2(r, y)), 20),
+    new THREE.MeshStandardMaterial({ color: 0x7faaa0, roughness: 0.44 }));
+  pot.position.set(-0.58, -0.065, -0.26);
+  model.add(pot);
 
   const texture = new THREE.TextureLoader().load(boardImage);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   const face = new THREE.Mesh(new THREE.PlaneGeometry(width, height), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.95 }));
-  face.position.set(0, boardY, 0.048);
-  panel.add(face);
+  face.position.copy(board.position);
+  face.quaternion.copy(board.quaternion);
+  model.add(face);
+  model.position.set(-8.06, 0.098, -12.36);
+  model.rotation.y = 0.19;
 
   const corners = [-1, 1].flatMap(x => [-1, 1].map(y => new THREE.Vector3(x * width / 2, y * height / 2, 0)));
   const point = new THREE.Vector3();
@@ -67,7 +66,7 @@ export function makeMediumSign(link: HTMLAnchorElement) {
     if (link.style.inset !== inset) link.style.inset = inset;
   }
 
-  return { model, panel, positionLink };
+  return { model, positionLink };
 }
 
 const edge = (value: number) => Math.max(0, Math.round(value)) + 'px';

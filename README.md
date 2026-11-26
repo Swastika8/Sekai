@@ -17,11 +17,15 @@ Open the URL Vite prints. The development server includes the journal API. React
 
 ## Write and publish
 
-Open **Writing studio** in the footer or visit `/studio`. On the first local visit, set an owner password. Write in Markdown, preview the article, then save a draft or publish it. A published post gets its own URL. The wooden sign beside the tea-house steps and the footer both lead to Swastika’s Medium profile. You can change that link in the studio.
+Open **Writing studio** in the footer or visit `/studio`. On the first local visit, set an owner password. Write in Markdown, preview the article, then save a draft or publish it. A published post gets its own URL. The small wooden sign beside the pot on the lantern path and the footer both lead to Swastika’s Medium profile. You can change that link in the studio.
 
 A fresh database includes *Just Meet Them Once* and *Deconstructing 2,136 Jōyō Kanji Through Visual Etymology*. Subsequent edits and new posts live in the database. Back up SQLite to preserve that work across deployments.
 
 ## Test and serve
+
+### Vercel
+
+Import this GitHub repository in [Vercel](https://vercel.com/new). Choose the **Other** framework preset, keep the root directory at the repository root, and use Node.js **24.x**. The checked-in `vercel.json` sets the install command, build command, output directory, and article routing. Vercel provides a `vercel.app` address after deployment. With Git integration, pushes to `main` update the public site. The post publishing workflow below applies on Vercel too.
 
 ### Cloudflare Pages
 

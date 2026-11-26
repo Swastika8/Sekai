@@ -142,10 +142,6 @@ export function GardenWalk({ medium, onSearch, children }: { medium: string; onS
                   <button className="garden-link" type="button" onClick={() => controls.current?.activate('maple')}>Shake the maple</button>
                 </div>
               )}
-              <a className="tea-sign" ref={mediumLink} href={medium || undefined} hidden={!medium}
-                target="_blank" rel="me noopener noreferrer" aria-label="Read Swastika’s writing on Medium (opens in a new tab)">
-                <img src={mediumBoard} alt="Swastika’s writing on Medium" width="816" height="336" />
-              </a>
             </div>
           </div>
         </section>
@@ -163,6 +159,10 @@ export function GardenWalk({ medium, onSearch, children }: { medium: string; onS
                 </>)}
                 <a className="garden-link" href="#journal">Continue to the journal</a>
               </div>
+              <a className="medium-sign" ref={mediumLink} href={medium || undefined} hidden={!medium}
+                target="_blank" rel="me noopener noreferrer" aria-label="Read Swastika’s writing on Medium (opens in a new tab)">
+                <img src={mediumBoard} alt="Swastika’s writing on Medium" width="816" height="336" />
+              </a>
             </div>
           </div>
         </section>
