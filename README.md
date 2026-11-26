@@ -1,5 +1,7 @@
 # Sekai · 世界
 
+[Visit the live garden and journal](https://sekaiblog.vercel.app/)
+
 Sekai is Swastika’s personal journal about Japanese, code, design, and everyday life. The walk begins beside a waterfall, passes a tea house and flowering cherry trees, and ends at a pond where five patterned koi react to ripples. Readers can jump straight to the journal, filter by topic, or search for an essay.
 
 ![Five koi beneath the surface of Sekai’s moon pond](frontend/src/assets/garden/koi-pond.webp)
